@@ -7,6 +7,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.jsoup.Jsoup;
+
 import jdk.nashorn.api.scripting.ScriptObjectMirror;
 import jdk.nashorn.api.scripting.ScriptUtils;
 
@@ -268,6 +270,16 @@ public class TypeConverter {
 		} else {
 			return null;
 		}
+	}
+
+	/**
+	 * Strip away all HTML specific tags and return only the text content.
+	 * 
+	 * @param html
+	 * @return Text without HTML entities
+	 */
+	public String htmlToText(String html) {
+		return Jsoup.parse(html).text();
 	}
 
 	/**

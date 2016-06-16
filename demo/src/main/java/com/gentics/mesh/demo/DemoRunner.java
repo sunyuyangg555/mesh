@@ -11,6 +11,7 @@ import com.gentics.mesh.etc.config.MeshOptions;
 import com.gentics.mesh.util.DeploymentUtil;
 import com.gentics.mesh.verticle.admin.AdminGUIVerticle;
 
+import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
@@ -32,6 +33,10 @@ public class DemoRunner {
 	}
 
 	public static void main(String[] args) throws Exception {
+		new DemoRunner().run();
+	}
+
+	protected void run() throws Exception {
 		// Extract dump file on first time startup to speedup startup
 		if (!new File("data").exists()) {
 			log.info("Extracting demo data since this is the first time you start mesh...");
@@ -46,9 +51,15 @@ public class DemoRunner {
 		mesh.setCustomLoader((vertx) -> {
 			JsonObject config = new JsonObject();
 			config.put("port", options.getHttpServerOptions().getPort());
-			DeploymentUtil.deployAndWait(vertx, config, DemoVerticle.class, false);
-			DeploymentUtil.deployAndWait(vertx, config, AdminGUIVerticle.class, false);
+			addCustomVerticles(vertx, config);
 		});
 		mesh.run();
+
 	}
+
+	protected void addCustomVerticles(Vertx vertx, JsonObject config) throws InterruptedException {
+		DeploymentUtil.deployAndWait(vertx, config, DemoVerticle.class, false);
+		DeploymentUtil.deployAndWait(vertx, config, AdminGUIVerticle.class, false);
+	}
+
 }

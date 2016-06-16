@@ -29,6 +29,21 @@ public class TagRootImpl extends AbstractRootVertex<Tag> implements TagRoot {
 	private static final Logger log = LoggerFactory.getLogger(TagRootImpl.class);
 
 	@Override
+	public String getCreatedEventAddress() {
+		return "tag.created";
+	}
+
+	@Override
+	public String getUpdatedEventAddress() {
+		return "tag.updated";
+	}
+
+	@Override
+	public String getDeletedEventAddress() {
+		return "tag.deleted";
+	}
+
+	@Override
 	public Class<? extends Tag> getPersistanceClass() {
 		return TagImpl.class;
 	}
@@ -50,8 +65,8 @@ public class TagRootImpl extends AbstractRootVertex<Tag> implements TagRoot {
 
 	@Override
 	public Observable<Tag> findByName(String name) {
-		return Observable.just(out(getRootLabel()).has(getPersistanceClass()).mark().out(HAS_FIELD_CONTAINER).has("name", name).back()
-				.nextOrDefaultExplicit(TagImpl.class, null));
+		return Observable.just(out(getRootLabel()).has(getPersistanceClass()).mark().out(HAS_FIELD_CONTAINER)
+				.has("name", name).back().nextOrDefaultExplicit(TagImpl.class, null));
 	}
 
 	@Override
@@ -94,8 +109,8 @@ public class TagRootImpl extends AbstractRootVertex<Tag> implements TagRoot {
 
 	@Override
 	public Observable<Tag> create(InternalActionContext ac) {
-		throw new NotImplementedException("The tag family is the root element thus should be used for creation of tags.");
+		throw new NotImplementedException(
+				"The tag family is the root element thus should be used for creation of tags.");
 	}
-
 
 }

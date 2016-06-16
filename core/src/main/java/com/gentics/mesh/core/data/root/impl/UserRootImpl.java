@@ -46,6 +46,21 @@ public class UserRootImpl extends AbstractRootVertex<User> implements UserRoot {
 	}
 
 	@Override
+	public String getCreatedEventAddress() {
+		return "user.created";
+	}
+
+	@Override
+	public String getUpdatedEventAddress() {
+		return "user.updated";
+	}
+
+	@Override
+	public String getDeletedEventAddress() {
+		return "user.deleted";
+	}
+
+	@Override
 	public Class<? extends User> getPersistanceClass() {
 		return UserImpl.class;
 	}
@@ -83,12 +98,14 @@ public class UserRootImpl extends AbstractRootVertex<User> implements UserRoot {
 
 	@Override
 	public User findByUsername(String username) {
-		return out(HAS_USER).has(UserImpl.class).has(UserImpl.USERNAME_PROPERTY_KEY, username).nextOrDefaultExplicit(UserImpl.class, null);
+		return out(HAS_USER).has(UserImpl.class).has(UserImpl.USERNAME_PROPERTY_KEY, username)
+				.nextOrDefaultExplicit(UserImpl.class, null);
 	}
 
 	@Override
 	public MeshAuthUser findMeshAuthUserByUsername(String username) {
-		return out(HAS_USER).has(UserImpl.class).has(UserImpl.USERNAME_PROPERTY_KEY, username).nextOrDefaultExplicit(MeshAuthUserImpl.class, null);
+		return out(HAS_USER).has(UserImpl.class).has(UserImpl.USERNAME_PROPERTY_KEY, username)
+				.nextOrDefaultExplicit(MeshAuthUserImpl.class, null);
 	}
 
 	@Override
@@ -152,13 +169,15 @@ public class UserRootImpl extends AbstractRootVertex<User> implements UserRoot {
 					user.setUsername(requestModel.getUsername());
 					user.setLastname(requestModel.getLastname());
 					user.setEmailAddress(requestModel.getEmailAddress());
-					user.setPasswordHash(MeshSpringConfiguration.getInstance().passwordEncoder().encode(requestModel.getPassword()));
+					user.setPasswordHash(
+							MeshSpringConfiguration.getInstance().passwordEncoder().encode(requestModel.getPassword()));
 					requestUser.addCRUDPermissionOnRole(this, CREATE_PERM, user);
 					NodeReference reference = requestModel.getNodeReference();
 					SearchQueueBatch batch = user.createIndexBatch(STORE_ACTION);
 
 					if (!isEmpty(groupUuid)) {
-						Group parentGroup = boot.groupRoot().loadObjectByUuid(ac, groupUuid, CREATE_PERM).toBlocking().first();
+						Group parentGroup = boot.groupRoot().loadObjectByUuid(ac, groupUuid, CREATE_PERM).toBlocking()
+								.first();
 						parentGroup.addUser(user);
 						batch.addEntry(parentGroup, STORE_ACTION);
 						requestUser.addCRUDPermissionOnRole(parentGroup, CREATE_PERM, user);
@@ -173,12 +192,14 @@ public class UserRootImpl extends AbstractRootVertex<User> implements UserRoot {
 							throw error(BAD_REQUEST, "user_incomplete_node_reference");
 						}
 
-						// TODO decide whether we need to check perms on the project as well
+						// TODO decide whether we need to check perms on the
+						// project as well
 						Project project = boot.projectRoot().findByName(projectName).toBlocking().single();
 						if (project == null) {
 							throw error(BAD_REQUEST, "project_not_found", projectName);
 						}
-						Node node = project.getNodeRoot().loadObjectByUuid(ac, referencedNodeUuid, READ_PERM).toBlocking().first();
+						Node node = project.getNodeRoot().loadObjectByUuid(ac, referencedNodeUuid, READ_PERM)
+								.toBlocking().first();
 						user.setReferencedNode(node);
 					} else if (reference != null) {
 						// TODO handle user create using full node rest model.
@@ -190,7 +211,7 @@ public class UserRootImpl extends AbstractRootVertex<User> implements UserRoot {
 
 				reload();
 				SearchQueueBatch batch = tuple.v1();
-				//				User createdUser = tuple.v2();
+				// User createdUser = tuple.v2();
 				return batch.process().map(done -> {
 					return tuple.v2();
 				}).toBlocking().first();

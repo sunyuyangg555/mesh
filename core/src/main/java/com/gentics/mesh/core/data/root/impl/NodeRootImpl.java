@@ -16,6 +16,7 @@ import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
 import org.elasticsearch.common.collect.Tuple;
 
+import com.gentics.mesh.Mesh;
 import com.gentics.mesh.cli.BootstrapInitializer;
 import com.gentics.mesh.context.InternalActionContext;
 import com.gentics.mesh.core.data.Language;
@@ -52,6 +53,21 @@ public class NodeRootImpl extends AbstractRootVertex<Node> implements NodeRoot {
 
 	private static final Logger log = LoggerFactory.getLogger(NodeRootImpl.class);
 
+	@Override
+	public String getCreatedEventAddress() {
+		return "node.created";
+	}
+
+	@Override
+	public String getUpdatedEventAddress() {
+		return "node.updated";
+	}
+
+	@Override
+	public String getDeletedEventAddress() {
+		return "node.deleted";
+	}
+
 	public static void checkIndices(Database database) {
 		database.addEdgeIndex(HAS_NODE);
 		database.addVertexType(NodeRootImpl.class);
@@ -78,11 +94,12 @@ public class NodeRootImpl extends AbstractRootVertex<Node> implements NodeRoot {
 	}
 
 	@Override
-	public PageImpl<? extends Node> findAll(MeshAuthUser requestUser, List<String> languageTags, PagingParameter pagingInfo)
-			throws InvalidArgumentException {
+	public PageImpl<? extends Node> findAll(MeshAuthUser requestUser, List<String> languageTags,
+			PagingParameter pagingInfo) throws InvalidArgumentException {
 		VertexTraversal<?, ?, ?> traversal = requestUser.getImpl().getPermTraversal(READ_PERM).has(NodeImpl.class);
 		VertexTraversal<?, ?, ?> countTraversal = requestUser.getImpl().getPermTraversal(READ_PERM).has(NodeImpl.class);
-		PageImpl<? extends Node> nodePage = TraversalHelper.getPagedResult(traversal, countTraversal, pagingInfo, NodeImpl.class);
+		PageImpl<? extends Node> nodePage = TraversalHelper.getPagedResult(traversal, countTraversal, pagingInfo,
+				NodeImpl.class);
 		return nodePage;
 	}
 
@@ -92,7 +109,8 @@ public class NodeRootImpl extends AbstractRootVertex<Node> implements NodeRoot {
 		NodeImpl node = getGraph().addFramedVertex(NodeImpl.class);
 		node.setSchemaContainer(version.getSchemaContainer());
 
-		// TODO is this a duplicate? - Maybe we should only store the project assignment in one way?
+		// TODO is this a duplicate? - Maybe we should only store the project
+		// assignment in one way?
 		project.getNodeRoot().addNode(node);
 		node.setProject(project);
 		node.setCreator(creator);
@@ -123,7 +141,7 @@ public class NodeRootImpl extends AbstractRootVertex<Node> implements NodeRoot {
 	 * @param obsSchemaContainer
 	 * @return
 	 */
-	//TODO use schema container version instead of container
+	// TODO use schema container version instead of container
 	private Observable<Node> createNode(InternalActionContext ac, Observable<SchemaContainer> obsSchemaContainer) {
 
 		Database db = MeshSpringConfiguration.getInstance().database();
@@ -148,21 +166,24 @@ public class NodeRootImpl extends AbstractRootVertex<Node> implements NodeRoot {
 				requestUser.reload();
 				project.reload();
 				// Load the parent node in order to create the node
-				return project.getNodeRoot().loadObjectByUuid(ac, requestModel.getParentNodeUuid(), CREATE_PERM).map(parentNode -> {
-					return db.trx(() -> {
-						Node node = parentNode.create(requestUser, schemaContainer.getLatestVersion(), project);
-						requestUser.addCRUDPermissionOnRole(parentNode, CREATE_PERM, node);
-						node.setPublished(requestModel.isPublished());
-						Language language = boot.languageRoot().findByLanguageTag(requestModel.getLanguage());
-						if (language == null) {
-							throw error(BAD_REQUEST, "language_not_found", requestModel.getLanguage());
-						}
-						NodeGraphFieldContainer container = node.createGraphFieldContainer(language, schemaContainer.getLatestVersion());
-						container.updateFieldsFromRest(ac, requestModel.getFields(), schema);
-						SearchQueueBatch batch = node.createIndexBatch(STORE_ACTION);
-						return Tuple.tuple(batch, node);
-					});
-				});
+				return project.getNodeRoot().loadObjectByUuid(ac, requestModel.getParentNodeUuid(), CREATE_PERM)
+						.map(parentNode -> {
+							return db.trx(() -> {
+								Node node = parentNode.create(requestUser, schemaContainer.getLatestVersion(), project);
+								requestUser.addCRUDPermissionOnRole(parentNode, CREATE_PERM, node);
+								node.setPublished(requestModel.isPublished());
+								Language language = boot.languageRoot().findByLanguageTag(requestModel.getLanguage());
+								if (language == null) {
+									throw error(BAD_REQUEST, "language_not_found", requestModel.getLanguage());
+								}
+								NodeGraphFieldContainer container = node.createGraphFieldContainer(language,
+										schemaContainer.getLatestVersion());
+								container.updateFieldsFromRest(ac, requestModel.getFields(), schema);
+								SearchQueueBatch batch = node.createIndexBatch(STORE_ACTION);
+								return Tuple.tuple(batch, node);
+							});
+
+						});
 			});
 			return obsTuple.flatMap(tuple -> {
 				return tuple.v1().process().map(i -> tuple.v2());
@@ -186,32 +207,37 @@ public class NodeRootImpl extends AbstractRootVertex<Node> implements NodeRoot {
 			// 1. Extract the schema information from the given json
 			SchemaReferenceInfo schemaInfo = JsonUtil.readValue(body, SchemaReferenceInfo.class);
 			boolean missingSchemaInfo = schemaInfo.getSchema() == null
-					|| (StringUtils.isEmpty(schemaInfo.getSchema().getUuid()) && StringUtils.isEmpty(schemaInfo.getSchema().getName()));
+					|| (StringUtils.isEmpty(schemaInfo.getSchema().getUuid())
+							&& StringUtils.isEmpty(schemaInfo.getSchema().getName()));
 			if (missingSchemaInfo) {
 				throw error(BAD_REQUEST, "error_schema_parameter_missing");
 			}
 
 			if (!isEmpty(schemaInfo.getSchema().getUuid())) {
 				// 2. Use schema reference by uuid first
-				return project.getSchemaContainerRoot().loadObjectByUuid(ac, schemaInfo.getSchema().getUuid(), READ_PERM).flatMap(schemaContainer -> {
-					return createNode(ac, Observable.just(schemaContainer));
-				});
+				return project.getSchemaContainerRoot()
+						.loadObjectByUuid(ac, schemaInfo.getSchema().getUuid(), READ_PERM).flatMap(schemaContainer -> {
+							return createNode(ac, Observable.just(schemaContainer));
+						});
 			}
 
-			//TODO handle schema version as well? Decide whether it should be possible to create a node and specify the schema version.
+			// TODO handle schema version as well? Decide whether it should be
+			// possible to create a node and specify the schema version.
 			// 3. Or just schema reference by name
 			if (!isEmpty(schemaInfo.getSchema().getName())) {
-				SchemaContainer containerByName = project.getSchemaContainerRoot().findByName(schemaInfo.getSchema().getName()).toBlocking().single();
+				SchemaContainer containerByName = project.getSchemaContainerRoot()
+						.findByName(schemaInfo.getSchema().getName()).toBlocking().single();
 				if (containerByName != null) {
 					String schemaName = containerByName.getName();
 					String schemaUuid = containerByName.getUuid();
-					return requestUser.hasPermissionAsync(ac, containerByName, GraphPermission.READ_PERM).flatMap(hasPerm -> {
-						if (hasPerm) {
-							return createNode(ac, Observable.just(containerByName));
-						} else {
-							throw error(FORBIDDEN, "error_missing_perm", schemaUuid + "/" + schemaName);
-						}
-					});
+					return requestUser.hasPermissionAsync(ac, containerByName, GraphPermission.READ_PERM)
+							.flatMap(hasPerm -> {
+								if (hasPerm) {
+									return createNode(ac, Observable.just(containerByName));
+								} else {
+									throw error(FORBIDDEN, "error_missing_perm", schemaUuid + "/" + schemaName);
+								}
+							});
 
 				} else {
 					throw error(NOT_FOUND, "schema_not_found", schemaInfo.getSchema().getName());
@@ -224,10 +250,12 @@ public class NodeRootImpl extends AbstractRootVertex<Node> implements NodeRoot {
 	}
 
 	@Override
-	public void applyPermissions(Role role, boolean recursive, Set<GraphPermission> permissionsToGrant, Set<GraphPermission> permissionsToRevoke) {
+	public void applyPermissions(Role role, boolean recursive, Set<GraphPermission> permissionsToGrant,
+			Set<GraphPermission> permissionsToRevoke) {
 		if (recursive) {
 			for (Node node : findAll()) {
-				// We don't need to recursively handle the permissions for each node again since this call will already affect all nodes.
+				// We don't need to recursively handle the permissions for each
+				// node again since this call will already affect all nodes.
 				node.applyPermissions(role, false, permissionsToGrant, permissionsToRevoke);
 			}
 		}

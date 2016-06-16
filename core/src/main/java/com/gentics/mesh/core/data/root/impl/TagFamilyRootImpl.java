@@ -38,6 +38,21 @@ public class TagFamilyRootImpl extends AbstractRootVertex<TagFamily> implements 
 
 	private static final Logger log = LoggerFactory.getLogger(ProjectImpl.class);
 
+	@Override
+	public String getCreatedEventAddress() {
+		return "tagFamily.created";
+	}
+
+	@Override
+	public String getUpdatedEventAddress() {
+		return "tagFamily.updated";
+	}
+
+	@Override
+	public String getDeletedEventAddress() {
+		return "tagFamily.deleted";
+	}
+
 	public static void checkIndices(Database database) {
 		database.addEdgeIndex(HAS_TAG_FAMILY);
 		database.addVertexType(TagFamilyRootImpl.class);
@@ -46,7 +61,7 @@ public class TagFamilyRootImpl extends AbstractRootVertex<TagFamily> implements 
 	@Override
 	public
 
-	Class<? extends TagFamily> getPersistanceClass() {
+			Class<? extends TagFamily> getPersistanceClass() {
 		return TagFamilyImpl.class;
 	}
 
@@ -68,10 +83,10 @@ public class TagFamilyRootImpl extends AbstractRootVertex<TagFamily> implements 
 		addTagFamily(tagFamily);
 		tagFamily.setCreated(creator);
 
-		// Add tag family to project 
+		// Add tag family to project
 		tagFamily.setProject(getProject());
 
-		// Add created tag family to tag family root 
+		// Add created tag family to tag family root
 		TagFamilyRoot root = BootstrapInitializer.getBoot().tagFamilyRoot();
 		if (root != null && !root.equals(this)) {
 			root.addTagFamily(tagFamily);

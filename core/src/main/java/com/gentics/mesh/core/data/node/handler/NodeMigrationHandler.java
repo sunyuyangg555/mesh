@@ -17,8 +17,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import com.gentics.mesh.Mesh;
-import com.gentics.mesh.context.impl.NodeMigrationActionContextImpl;
 import com.gentics.mesh.cli.BootstrapInitializer;
+import com.gentics.mesh.context.impl.NodeMigrationActionContextImpl;
 import com.gentics.mesh.core.data.GraphFieldContainer;
 import com.gentics.mesh.core.data.NodeGraphFieldContainer;
 import com.gentics.mesh.core.data.node.Micronode;
@@ -50,7 +50,6 @@ import com.gentics.mesh.util.Tuple;
 import com.gentics.mesh.util.UUIDUtil;
 
 import io.vertx.rxjava.core.buffer.Buffer;
-import jdk.nashorn.api.scripting.ClassFilter;
 import jdk.nashorn.api.scripting.NashornScriptEngineFactory;
 import rx.Observable;
 
@@ -254,7 +253,7 @@ public class NodeMigrationHandler extends AbstractHandler {
 		for (Tuple<String, List<Tuple<String, Object>>> scriptEntry : migrationScripts) {
 			String script = scriptEntry.v1();
 			List<Tuple<String, Object>> context = scriptEntry.v2();
-			ScriptEngine engine = factory.getScriptEngine(new Sandbox());
+			ScriptEngine engine = factory.getScriptEngine(new ScriptSandbox());
 
 			engine.put("node", nodeJson);
 			engine.put("convert", new TypeConverter());
@@ -334,13 +333,4 @@ public class NodeMigrationHandler extends AbstractHandler {
 		}
 	}
 
-	/**
-	 * Sandbox classfilter that filters all classes
-	 */
-	protected static class Sandbox implements ClassFilter {
-		@Override
-		public boolean exposeToScripts(String className) {
-			return false;
-		}
-	}
 }

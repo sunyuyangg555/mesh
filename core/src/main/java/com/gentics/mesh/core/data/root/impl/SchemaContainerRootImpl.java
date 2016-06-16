@@ -37,6 +37,21 @@ public class SchemaContainerRootImpl extends AbstractRootVertex<SchemaContainer>
 
 	private static final Logger log = LoggerFactory.getLogger(SchemaContainerRootImpl.class);
 
+	@Override
+	public String getCreatedEventAddress() {
+		return "schema.created";
+	}
+
+	@Override
+	public String getUpdatedEventAddress() {
+		return "schema.updated";
+	}
+
+	@Override
+	public String getDeletedEventAddress() {
+		return "schema.deleted";
+	}
+
 	public static void checkIndices(Database database) {
 		database.addVertexType(SchemaContainerRootImpl.class);
 	}
@@ -99,7 +114,8 @@ public class SchemaContainerRootImpl extends AbstractRootVertex<SchemaContainer>
 
 	@Override
 	public void delete(SearchQueueBatch batch) {
-		// TODO maybe we should add a check here to prevent deletion of the meshroot.schemaRoot ?
+		// TODO maybe we should add a check here to prevent deletion of the
+		// meshroot.schemaRoot ?
 		if (log.isDebugEnabled()) {
 			log.debug("Deleting schema container root {" + getUuid() + "}");
 		}

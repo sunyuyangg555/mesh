@@ -29,6 +29,21 @@ import rx.Observable;
 
 public class GroupRootImpl extends AbstractRootVertex<Group> implements GroupRoot {
 
+	@Override
+	public String getCreatedEventAddress() {
+		return "group.created";
+	}
+
+	@Override
+	public String getUpdatedEventAddress() {
+		return "group.updated";
+	}
+
+	@Override
+	public String getDeletedEventAddress() {
+		return "group.deleted";
+	}
+
 	public static void checkIndices(Database database) {
 		database.addEdgeIndex(HAS_GROUP);
 		database.addVertexType(GroupRootImpl.class);
@@ -86,7 +101,8 @@ public class GroupRootImpl extends AbstractRootVertex<Group> implements GroupRoo
 			if (requestUser.hasPermissionSync(ac, this, CREATE_PERM)) {
 				Group groupWithSameName = findByName(requestModel.getName()).toBlocking().single();
 				if (groupWithSameName != null && !groupWithSameName.getUuid().equals(getUuid())) {
-					throw conflict(groupWithSameName.getUuid(), requestModel.getName(), "group_conflicting_name", requestModel.getName());
+					throw conflict(groupWithSameName.getUuid(), requestModel.getName(), "group_conflicting_name",
+							requestModel.getName());
 				}
 				Tuple<SearchQueueBatch, Group> tuple = db.trx(() -> {
 					requestUser.reload();

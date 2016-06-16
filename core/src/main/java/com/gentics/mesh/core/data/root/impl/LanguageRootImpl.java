@@ -21,7 +21,25 @@ import com.tinkerpop.blueprints.Vertex;
 
 import rx.Observable;
 
-public class LanguageRootImpl extends AbstractRootVertex<Language>implements LanguageRoot {
+public class LanguageRootImpl extends AbstractRootVertex<Language> implements LanguageRoot {
+
+	@Override
+	public String getCreatedEventAddress() {
+		// Don't send an event
+		return null;
+	}
+
+	@Override
+	public String getUpdatedEventAddress() {
+		// Don't send an event
+		return null;
+	}
+
+	@Override
+	public String getDeletedEventAddress() {
+		// Don't send an event
+		return null;
+	}
 
 	public static void checkIndices(Database database) {
 		database.addEdgeIndex(HAS_LANGUAGE);
@@ -59,7 +77,8 @@ public class LanguageRootImpl extends AbstractRootVertex<Language>implements Lan
 	}
 
 	/**
-	 * Find the language with the specified http://en.wikipedia.org/wiki/IETF_language_tag[IETF language tag].
+	 * Find the language with the specified
+	 * http://en.wikipedia.org/wiki/IETF_language_tag[IETF language tag].
 	 * 
 	 * @param languageTag
 	 * @return Found language or null if none could be found
@@ -67,10 +86,13 @@ public class LanguageRootImpl extends AbstractRootVertex<Language>implements Lan
 	@Override
 	public Language findByLanguageTag(String languageTag) {
 		Database db = MeshSpringConfiguration.getInstance().database();
-		Iterator<Vertex> it = db.getVertices(LanguageImpl.class, new String[] { LanguageImpl.LANGUAGE_TAG_PROPERTY_KEY }, new Object[] {languageTag});
+		Iterator<Vertex> it = db.getVertices(LanguageImpl.class,
+				new String[] { LanguageImpl.LANGUAGE_TAG_PROPERTY_KEY }, new Object[] { languageTag });
 		if (it.hasNext()) {
-			//TODO check whether the language was assigned to this root node?
-			//return out(HAS_LANGUAGE).has(LanguageImpl.class).has("languageTag", languageTag).nextOrDefaultExplicit(LanguageImpl.class, null);
+			// TODO check whether the language was assigned to this root node?
+			// return
+			// out(HAS_LANGUAGE).has(LanguageImpl.class).has("languageTag",
+			// languageTag).nextOrDefaultExplicit(LanguageImpl.class, null);
 			FramedGraph graph = Database.getThreadLocalGraph();
 			return graph.frameElementExplicit(it.next(), LanguageImpl.class);
 		} else {
@@ -79,8 +101,9 @@ public class LanguageRootImpl extends AbstractRootVertex<Language>implements Lan
 	}
 
 	/**
-	 * The tag language is currently fixed to english since we only want to store tags based on a single language. The idea is that tags will be localizable in
-	 * the future.
+	 * The tag language is currently fixed to english since we only want to
+	 * store tags based on a single language. The idea is that tags will be
+	 * localizable in the future.
 	 */
 	@Override
 	public Language getTagDefaultLanguage() {

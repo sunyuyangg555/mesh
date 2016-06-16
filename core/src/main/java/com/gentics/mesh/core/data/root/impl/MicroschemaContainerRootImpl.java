@@ -27,10 +27,26 @@ import com.gentics.mesh.json.JsonUtil;
 
 import rx.Observable;
 
-public class MicroschemaContainerRootImpl extends AbstractRootVertex<MicroschemaContainer> implements MicroschemaContainerRoot {
+public class MicroschemaContainerRootImpl extends AbstractRootVertex<MicroschemaContainer>
+		implements MicroschemaContainerRoot {
 
 	public static void checkIndices(Database database) {
 		database.addVertexType(MicroschemaContainerRootImpl.class);
+	}
+
+	@Override
+	public String getCreatedEventAddress() {
+		return "microschema.created";
+	}
+
+	@Override
+	public String getUpdatedEventAddress() {
+		return "microschema.updated";
+	}
+
+	@Override
+	public String getDeletedEventAddress() {
+		return "microschema.deleted";
 	}
 
 	@Override

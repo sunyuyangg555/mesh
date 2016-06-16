@@ -40,6 +40,21 @@ public class RoleRootImpl extends AbstractRootVertex<Role> implements RoleRoot {
 	}
 
 	@Override
+	public String getCreatedEventAddress() {
+		return "role.created";
+	}
+
+	@Override
+	public String getUpdatedEventAddress() {
+		return "role.updated";
+	}
+
+	@Override
+	public String getDeletedEventAddress() {
+		return "role.deleted";
+	}
+
+	@Override
 	public Class<? extends Role> getPersistanceClass() {
 		return RoleImpl.class;
 	}
@@ -52,14 +67,17 @@ public class RoleRootImpl extends AbstractRootVertex<Role> implements RoleRoot {
 	@Override
 	public void addRole(Role role) {
 		if (log.isDebugEnabled()) {
-			log.debug("Adding role {" + role.getUuid() + ":" + role.getName() + "#" + role.getImpl().getId() + "} to roleRoot {" + getId() + "}");
+			log.debug("Adding role {" + role.getUuid() + ":" + role.getName() + "#" + role.getImpl().getId()
+					+ "} to roleRoot {" + getId() + "}");
 		}
 		addItem(role);
 	}
 
 	@Override
 	public void removeRole(Role role) {
-		// TODO delete the role? unlink from all groups? how is ferma / blueprint handling this. Neo4j would explode when trying to remove a node that still has
+		// TODO delete the role? unlink from all groups? how is ferma /
+		// blueprint handling this. Neo4j would explode when trying to remove a
+		// node that still has
 		// connecting edges.
 		removeItem(role);
 	}

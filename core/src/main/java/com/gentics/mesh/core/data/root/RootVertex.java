@@ -16,7 +16,8 @@ import com.gentics.mesh.util.InvalidArgumentException;
 import rx.Observable;
 
 /**
- * A root vertex is an aggregation vertex that is used to aggregate various basic elements such as users, nodes, groups.
+ * A root vertex is an aggregation vertex that is used to aggregate various
+ * basic elements such as users, nodes, groups.
  */
 public interface RootVertex<T extends MeshCoreVertex<? extends RestModel, T>> extends MeshVertex {
 
@@ -115,10 +116,35 @@ public interface RootVertex<T extends MeshCoreVertex<? extends RestModel, T>> ex
 	String getRootLabel();
 
 	/**
-	 * Return the ferma graph persistance class for the items of the root vertex. (eg. NodeImpl, TagImpl...)
+	 * Return the ferma graph persistence class for the items of the root
+	 * vertex. (eg. NodeImpl, TagImpl...)
 	 * 
 	 * @return
 	 */
 	Class<? extends T> getPersistanceClass();
+
+	/**
+	 * Returns the event bus address which will be used to send created event
+	 * messages.
+	 * 
+	 * @return
+	 */
+	String getCreatedEventAddress();
+
+	/**
+	 * Return the eventbus update address for elements that are bundled within
+	 * this root vertex.
+	 * 
+	 * @return
+	 */
+	String getUpdatedEventAddress();
+
+	/**
+	 * Return the eventbus delete address for elements that are bundled within
+	 * this root vertex.
+	 * 
+	 * @return
+	 */
+	String getDeletedEventAddress();
 
 }

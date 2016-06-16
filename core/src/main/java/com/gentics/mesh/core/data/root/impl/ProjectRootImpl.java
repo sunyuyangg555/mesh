@@ -45,6 +45,21 @@ public class ProjectRootImpl extends AbstractRootVertex<Project> implements Proj
 
 	private static final Logger log = LoggerFactory.getLogger(ProjectRootImpl.class);
 
+	@Override
+	public String getCreatedEventAddress() {
+		return "project.created";
+	}
+
+	@Override
+	public String getUpdatedEventAddress() {
+		return "project.updated";
+	}
+
+	@Override
+	public String getDeletedEventAddress() {
+		return "project.deleted";
+	}
+
 	public static void checkIndices(Database database) {
 		database.addVertexType(ProjectRootImpl.class);
 	}
@@ -134,8 +149,10 @@ public class ProjectRootImpl extends AbstractRootVertex<Project> implements Proj
 		RouterStorage routerStorage = RouterStorage.getIntance();
 		BootstrapInitializer boot = BootstrapInitializer.getBoot();
 
-		// TODO also create a default object schema for the project. Move this into service class
-		// ObjectSchema defaultContentSchema = objectSchemaRoot.findByName(, name)
+		// TODO also create a default object schema for the project. Move this
+		// into service class
+		// ObjectSchema defaultContentSchema = objectSchemaRoot.findByName(,
+		// name)
 		ProjectCreateRequest requestModel = ac.fromJson(ProjectCreateRequest.class);
 		String projectName = requestModel.getName();
 		MeshAuthUser requestUser = ac.getUser();
@@ -147,7 +164,8 @@ public class ProjectRootImpl extends AbstractRootVertex<Project> implements Proj
 			if (!requestUser.hasPermissionSync(ac, boot.projectRoot(), CREATE_PERM)) {
 				throw error(FORBIDDEN, "error_missing_perm", boot.projectRoot().getUuid());
 			}
-			// TODO instead of this check, a constraint in the db should be added
+			// TODO instead of this check, a constraint in the db should be
+			// added
 			Project conflictingProject = boot.projectRoot().findByName(requestModel.getName()).toBlocking().single();
 			if (conflictingProject != null) {
 				throw conflict(conflictingProject.getUuid(), projectName, "project_conflicting_name");
@@ -171,7 +189,8 @@ public class ProjectRootImpl extends AbstractRootVertex<Project> implements Proj
 			SearchQueueBatch batch = tuple.v1();
 
 			try {
-				//TODO BUG project should only be added to router when trx and ES finished successfully
+				// TODO BUG project should only be added to router when trx and
+				// ES finished successfully
 				routerStorage.addProjectRouter(project.getName());
 				if (log.isInfoEnabled()) {
 					log.info("Registered project {" + project.getName() + "}");
