@@ -114,4 +114,19 @@ public class UserCrudHandler extends AbstractCrudHandler<User, UserResponse> {
 		}).subscribe(model -> ac.send(model, CREATED), ac::fail);
 	}
 
+	public void handleUserRolesList(InternalActionContext ac, String userUuid) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	public void handleAddRoleToUser(InternalActionContext ac, String userUuid, String roleUuid) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	public void handleRemoveRoleFromUser(InternalActionContext ac, String userUuid, String roleUuid) {
+		// TODO Auto-generated method stub
+		
+	}
+
 }

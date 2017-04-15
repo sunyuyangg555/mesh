@@ -55,7 +55,54 @@ public class UserEndpoint extends AbstractEndpoint {
 		addDeleteHandler();
 		addTokenHandler();
 
+		addRoleHandler();
 		addReadPermissionHandler();
+	}
+
+	public void addRoleHandler() {
+		Endpoint readRoles = createEndpoint();
+		readRoles.path("/:userUuid/roles");
+		readRoles.addUriParameter("userUuid", "Uuid of the user.", UUIDUtil.randomUUID());
+		readRoles.description("Load multiple roles that are assigned to the user. Return a paged list response.");
+		readRoles.method(GET);
+		readRoles.produces(APPLICATION_JSON);
+		readRoles.exampleResponse(OK, roleExamples.getRoleListResponse(), "List of roles which were assigned to the user.");
+		readRoles.addQueryParameters(PagingParametersImpl.class);
+		readRoles.addQueryParameters(RolePermissionParametersImpl.class);
+		readRoles.handler(rc -> {
+			InternalActionContext ac = new InternalRoutingActionContextImpl(rc);
+			String userUuid = ac.getParameter("userUuid");
+			crudHandler.handleUserRolesList(ac, userUuid);
+		});
+
+		Endpoint addRole = createEndpoint();
+		addRole.path("/:userUuid/roles/:roleUuid");
+		addRole.addUriParameter("userUuid", "Uuid of the user.", UUIDUtil.randomUUID());
+		addRole.addUriParameter("roleUuid", "Uuid of the role.", UUIDUtil.randomUUID());
+		addRole.method(POST);
+		addRole.description("Add the specified role to the user.");
+		addRole.produces(APPLICATION_JSON);
+		addRole.exampleResponse(OK, roleExamples.getRoleResponse2(), "Added role.");
+		addRole.handler(rc -> {
+			InternalActionContext ac = new InternalRoutingActionContextImpl(rc);
+			String userUuid = ac.getParameter("userUuid");
+			String roleUuid = ac.getParameter("roleUuid");
+			crudHandler.handleAddRoleToUser(ac, userUuid, roleUuid);
+		});
+
+		Endpoint removeRole = createEndpoint();
+		removeRole.path("/:userUuid/roles/:roleUuid");
+		removeRole.addUriParameter("userUuid", "Uuid of the user.", UUIDUtil.randomUUID());
+		removeRole.addUriParameter("roleUuid", "Uuid of the role.", UUIDUtil.randomUUID());
+		removeRole.method(DELETE);
+		removeRole.description("Remove the given role from the user.");
+		removeRole.exampleResponse(NO_CONTENT, "Role was removed from the user.");
+		removeRole.produces(APPLICATION_JSON).handler(rc -> {
+			InternalActionContext ac = new InternalRoutingActionContextImpl(rc);
+			String userUuid = ac.getParameter("userUuid");
+			String roleUuid = ac.getParameter("roleUuid");
+			crudHandler.handleRemoveRoleFromUser(ac, userUuid, roleUuid);
+		});
 	}
 
 	private void addReadPermissionHandler() {
@@ -146,7 +193,7 @@ public class UserEndpoint extends AbstractEndpoint {
 
 	private void addUpdateHandler() {
 
-		// Add the user token handler first in order to allow for recovery token handling 
+		// Add the user token handler first in order to allow for recovery token handling
 		getRouter().route("/:userUuid").method(POST).handler(userTokenHandler);
 		// Chain the regular auth handler afterwards in order to handle non-token code requests
 		getRouter().route("/:userUuid").method(POST).handler(authHandler);
