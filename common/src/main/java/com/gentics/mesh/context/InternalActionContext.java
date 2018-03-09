@@ -12,9 +12,9 @@ import com.gentics.mesh.parameter.ParameterProviderContext;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
-import io.vertx.core.MultiMap;
-import io.vertx.ext.web.Cookie;
-import io.vertx.ext.web.FileUpload;
+import io.vertx.reactivex.core.MultiMap;
+import io.vertx.reactivex.ext.web.Cookie;
+import io.vertx.reactivex.ext.web.FileUpload;
 
 /**
  * A internal action context exposes various internal method which an API action context would normally not dare to expose.

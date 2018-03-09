@@ -6,8 +6,8 @@ import com.gentics.mesh.Mesh;
 import com.gentics.mesh.router.RouterStorage;
 import com.gentics.mesh.router.route.AbstractEndpoint;
 
-import io.vertx.ext.web.Router;
-import io.vertx.ext.web.handler.StaticHandler;
+import io.vertx.reactivex.ext.web.Router;
+import io.vertx.reactivex.ext.web.handler.StaticHandler;
 
 /**
  * Endpoint which provides the demo angular webapp.
@@ -25,7 +25,7 @@ public class DemoAppEndpoint extends AbstractEndpoint {
 
 	@Override
 	public void init(RouterStorage rs) {
-		Router router = Router.router(Mesh.vertx());
+		Router router = Router.router(Mesh.rxVertx());
 		rs.getRootRouter().mountSubRouter("/" + basePath, router);
 		this.routerStorage = rs;
 		this.localRouter = router;

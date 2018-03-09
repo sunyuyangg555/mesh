@@ -23,8 +23,8 @@ import com.gentics.mesh.parameter.UserParameters;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.core.json.JsonObject;
-import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.impl.AuthHandlerImpl;
+import io.vertx.reactivex.ext.web.RoutingContext;
 
 /**
  * The user token authentication handler grants access to routes by validating the provides token query parameter value.

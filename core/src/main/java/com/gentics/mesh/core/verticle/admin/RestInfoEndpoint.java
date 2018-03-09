@@ -22,7 +22,7 @@ import com.gentics.mesh.search.SearchProvider;
 
 import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.impl.launcher.commands.VersionCommand;
-import io.vertx.ext.web.Router;
+import io.vertx.reactivex.ext.web.Router;
 
 public class RestInfoEndpoint extends AbstractEndpoint {
 
@@ -48,7 +48,7 @@ public class RestInfoEndpoint extends AbstractEndpoint {
 	@Override
 	public void init(RouterStorage rs) {
 		this.routerStorage = rs;
-		localRouter = Router.router(Mesh.vertx());
+		localRouter = Router.router(Mesh.rxVertx());
 	}
 
 	@Override
@@ -69,7 +69,7 @@ public class RestInfoEndpoint extends AbstractEndpoint {
 		endpoint.blockingHandler(rc -> {
 			RAMLGenerator generator = new RAMLGenerator();
 			String raml = generator.generate();
-			rc.response().putHeader(HttpHeaders.CONTENT_TYPE, APPLICATION_YAML_UTF8);
+			rc.response().putHeader(HttpHeaders.CONTENT_TYPE.toString(), APPLICATION_YAML_UTF8);
 			rc.response().end(raml);
 		}, false);
 

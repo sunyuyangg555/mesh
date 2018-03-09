@@ -18,14 +18,14 @@ import com.gentics.mesh.router.RouterStorage;
 import com.gentics.mesh.util.ETag;
 
 import io.netty.handler.codec.http.HttpResponseStatus;
-import io.vertx.core.MultiMap;
 import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import io.vertx.ext.web.Cookie;
-import io.vertx.ext.web.FileUpload;
-import io.vertx.ext.web.RoutingContext;
-import io.vertx.ext.web.Session;
+import io.vertx.reactivex.core.MultiMap;
+import io.vertx.reactivex.ext.web.Cookie;
+import io.vertx.reactivex.ext.web.FileUpload;
+import io.vertx.reactivex.ext.web.RoutingContext;
+import io.vertx.reactivex.ext.web.Session;
 
 /**
  * Vert.x specific routing context based action context implementation.
@@ -75,8 +75,8 @@ public class InternalRoutingActionContextImpl extends AbstractInternalActionCont
 
 	@Override
 	public void send(String body, HttpResponseStatus status, String contentType) {
-		rc.response().putHeader(HttpHeaders.CONTENT_TYPE, contentType);
-		rc.response().putHeader(HttpHeaders.CACHE_CONTROL, "no-cache");
+		rc.response().putHeader(HttpHeaders.CONTENT_TYPE.toString(), contentType);
+		rc.response().putHeader(HttpHeaders.CACHE_CONTROL.toString(), "no-cache");
 		rc.response().setStatusCode(status.code()).end(body);
 	}
 
@@ -87,7 +87,7 @@ public class InternalRoutingActionContextImpl extends AbstractInternalActionCont
 
 	@Override
 	public void setEtag(String entityTag, boolean isWeak) {
-		rc.response().putHeader(HttpHeaders.ETAG, ETag.prepareHeader(entityTag, isWeak));
+		rc.response().putHeader(HttpHeaders.ETAG.toString(), ETag.prepareHeader(entityTag, isWeak));
 	}
 
 	@Override
@@ -102,12 +102,12 @@ public class InternalRoutingActionContextImpl extends AbstractInternalActionCont
 			protocol = "https://";
 		}
 		String hostAndPort = rc.request().host();
-		rc.response().putHeader(HttpHeaders.LOCATION, protocol + hostAndPort + basePath);
+		rc.response().putHeader(HttpHeaders.LOCATION.toString(), protocol + hostAndPort + basePath);
 	}
 
 	@Override
 	public boolean matches(String etag, boolean isWeak) {
-		String headerValue = rc.request().getHeader(HttpHeaders.IF_NONE_MATCH);
+		String headerValue = rc.request().getHeader(HttpHeaders.IF_NONE_MATCH.toString());
 		if (headerValue == null) {
 			return false;
 		}

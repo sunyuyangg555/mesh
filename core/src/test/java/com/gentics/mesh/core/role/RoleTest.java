@@ -43,7 +43,7 @@ import com.syncleus.ferma.tx.Tx;
 import com.tinkerpop.blueprints.Direction;
 import com.tinkerpop.blueprints.Edge;
 
-import io.vertx.ext.web.RoutingContext;
+import io.vertx.reactivex.ext.web.RoutingContext;
 
 @MeshTestSetting(useElasticsearch = false, testSize = PROJECT, startServer = false)
 public class RoleTest extends AbstractMeshTest implements BasicObjectTestcases {

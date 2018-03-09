@@ -21,8 +21,8 @@ import com.gentics.mesh.util.RxUtil;
 import io.reactivex.Flowable;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpHeaders;
-import io.vertx.core.http.HttpServerResponse;
-import io.vertx.ext.web.RoutingContext;
+import io.vertx.reactivex.core.http.HttpServerResponse;
+import io.vertx.reactivex.ext.web.RoutingContext;
 
 /**
  * Handler which will accept {@link BinaryGraphField} elements and return the binary data using the given context.
@@ -67,7 +67,7 @@ public class BinaryFieldResponseHandler {
 			String etagHeaderValue = ETag.prepareHeader(ETag.hash(etagKey), false);
 			HttpServerResponse response = rc.response();
 			response.putHeader(ETAG, etagHeaderValue);
-			String requestETag = rc.request().getHeader(HttpHeaders.IF_NONE_MATCH);
+			String requestETag = rc.request().getHeader(HttpHeaders.IF_NONE_MATCH.toString());
 
 			if (requestETag != null && requestETag.equals(etagHeaderValue)) {
 				response.setStatusCode(NOT_MODIFIED.code()).end();
@@ -77,22 +77,22 @@ public class BinaryFieldResponseHandler {
 				Flowable<Buffer> resizedData = imageManipulator.handleResize(data, sha512sum, ac.getImageParameters())
 					.toFlowable()
 					.map(fileWithProps -> {
-						response.putHeader(HttpHeaders.CONTENT_LENGTH, String.valueOf(fileWithProps.getProps().size()));
-						response.putHeader(HttpHeaders.CONTENT_TYPE, "image/jpeg");
-						response.putHeader(HttpHeaders.CACHE_CONTROL, "must-revalidate");
-						response.putHeader(MeshHeaders.WEBROOT_RESPONSE_TYPE, "binary");
+						response.putHeader(HttpHeaders.CONTENT_LENGTH.toString(), String.valueOf(fileWithProps.getProps().size()));
+						response.putHeader(HttpHeaders.CONTENT_TYPE.toString(), "image/jpeg");
+						response.putHeader(HttpHeaders.CACHE_CONTROL.toString(), "must-revalidate");
+						response.putHeader(MeshHeaders.WEBROOT_RESPONSE_TYPE.toString(), "binary");
 						// TODO encode filename?
 						response.putHeader("content-disposition", "inline; filename=" + fileName);
 						return fileWithProps.getFile();
 					}).flatMap(RxUtil::toBufferFlow);
 				resizedData.subscribe(response::write, rc::fail, response::end);
 			} else {
-				response.putHeader(HttpHeaders.CONTENT_LENGTH, contentLength);
+				response.putHeader(HttpHeaders.CONTENT_LENGTH.toString(), contentLength);
 				if (contentType != null) {
-					response.putHeader(HttpHeaders.CONTENT_TYPE, contentType);
+					response.putHeader(HttpHeaders.CONTENT_TYPE.toString(), contentType);
 				}
-				response.putHeader(HttpHeaders.CACHE_CONTROL, "must-revalidate");
-				response.putHeader(MeshHeaders.WEBROOT_RESPONSE_TYPE, "binary");
+				response.putHeader(HttpHeaders.CACHE_CONTROL.toString(), "must-revalidate");
+				response.putHeader(MeshHeaders.WEBROOT_RESPONSE_TYPE.toString(), "binary");
 				// TODO encode filename?
 				// TODO images and pdf files should be shown in inline format
 				response.putHeader("content-disposition", "attachment; filename=" + fileName);

@@ -30,12 +30,12 @@ import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import io.vertx.ext.web.Router;
 import io.vertx.ext.web.handler.BodyHandler;
-import io.vertx.ext.web.handler.CookieHandler;
-import io.vertx.ext.web.handler.CorsHandler;
-import io.vertx.ext.web.handler.LoggerHandler;
 import io.vertx.ext.web.handler.impl.BodyHandlerImpl;
+import io.vertx.reactivex.ext.web.Router;
+import io.vertx.reactivex.ext.web.handler.CookieHandler;
+import io.vertx.reactivex.ext.web.handler.CorsHandler;
+import io.vertx.reactivex.ext.web.handler.LoggerHandler;
 
 /**
  * Central storage for all vertx web request routers.
@@ -194,7 +194,7 @@ public class RouterStorage {
 	public Router getRootRouter() {
 		Router rootRouter = coreRouters.get(ROOT_ROUTER_KEY);
 		if (rootRouter == null) {
-			rootRouter = Router.router(Mesh.vertx());
+			rootRouter = Router.router(Mesh.rxVertx());
 
 			// Root handlers
 			rootRouter.route().handler(LoggerHandler.create());
@@ -202,8 +202,8 @@ public class RouterStorage {
 			// APPLICATION_JSON requirements. This may not be true for other
 			// routes (eg. custom
 			// routes)
-			rootRouter.route().last().handler(DefaultNotFoundHandler.create());
-			rootRouter.route().failureHandler(FailureHandler.create());
+			rootRouter.route().getDelegate().last().handler(DefaultNotFoundHandler.create());
+			rootRouter.route().getDelegate().failureHandler(FailureHandler.create());
 			coreRouters.put(ROOT_ROUTER_KEY, rootRouter);
 		}
 		return rootRouter;
@@ -226,7 +226,7 @@ public class RouterStorage {
 			if ("websocket".equalsIgnoreCase(rh.request().getHeader("Upgrade"))) {
 				rh.next();
 			} else {
-				bodyHandler.handle(rh);
+				bodyHandler.handle(rh.getDelegate());
 			}
 		});
 		router.route().handler(CookieHandler.create());
@@ -241,7 +241,7 @@ public class RouterStorage {
 	public Router getCustomRouter() {
 		Router customRouter = coreRouters.get(CUSTOM_ROUTER_KEY);
 		if (customRouter == null) {
-			customRouter = Router.router(Mesh.vertx());
+			customRouter = Router.router(Mesh.rxVertx());
 
 			coreRouters.put(CUSTOM_ROUTER_KEY, customRouter);
 			getRootRouter().mountSubRouter(DEFAULT_CUSTOM_MOUNTPOINT, customRouter);
@@ -258,7 +258,7 @@ public class RouterStorage {
 	public Router getAPIRouter() {
 		Router apiRouter = coreRouters.get(API_ROUTER_KEY);
 		if (apiRouter == null) {
-			apiRouter = Router.router(Mesh.vertx());
+			apiRouter = Router.router(Mesh.rxVertx());
 			coreRouters.put(API_ROUTER_KEY, apiRouter);
 			getRootRouter().mountSubRouter(DEFAULT_API_MOUNTPOINT, apiRouter);
 		}
@@ -286,7 +286,7 @@ public class RouterStorage {
 		// TODO check for conflicting project routers
 		Router apiSubRouter = coreRouters.get(mountPoint);
 		if (apiSubRouter == null) {
-			apiSubRouter = Router.router(Mesh.vertx());
+			apiSubRouter = Router.router(Mesh.rxVertx());
 			if (log.isDebugEnabled()) {
 				log.debug("Creating subrouter for {" + mountPoint + "}");
 			}
@@ -329,7 +329,7 @@ public class RouterStorage {
 		assertProjectNameValid(name);
 		Router projectRouter = projectRouters.get(name);
 		if (projectRouter == null) {
-			projectRouter = Router.router(Mesh.vertx());
+			projectRouter = Router.router(Mesh.rxVertx());
 			projectRouters.put(name, projectRouter);
 			log.info("Added project router {" + name + "}");
 
@@ -340,7 +340,7 @@ public class RouterStorage {
 					ctx.fail(error(NOT_FOUND, "project_not_found", name));
 					return;
 				}
-				ctx.data().put(PROJECT_CONTEXT_KEY, project);
+				ctx.put(PROJECT_CONTEXT_KEY, project);
 				ctx.next();
 			});
 
@@ -395,7 +395,7 @@ public class RouterStorage {
 	public Router getProjectSubRouter(String name) {
 		Router router = projectSubRouters.get(name);
 		if (router == null) {
-			router = Router.router(Mesh.vertx());
+			router = Router.router(Mesh.rxVertx());
 			log.info("Added project subrouter {" + name + "}");
 			projectSubRouters.put(name, router);
 		}
@@ -413,7 +413,7 @@ public class RouterStorage {
 	public Router getCustomSubRouter(String name) {
 		Router router = customRouters.get(name);
 		if (router == null) {
-			router = Router.router(Mesh.vertx());
+			router = Router.router(Mesh.rxVertx());
 			log.info("Added custom subrouter {" + name + "}");
 			customRouters.put(name, router);
 		}

@@ -18,7 +18,7 @@ import com.gentics.mesh.json.MeshJsonException;
 import io.vertx.core.Handler;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import io.vertx.ext.web.RoutingContext;
+import io.vertx.reactivex.ext.web.RoutingContext;
 
 /**
  * Central failure handler for REST API routes.

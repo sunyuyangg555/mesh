@@ -8,11 +8,10 @@ import java.util.HashMap;
 
 import org.junit.Test;
 
-import com.gentics.mesh.context.InternalActionContext;
 import com.gentics.mesh.context.impl.InternalRoutingActionContextImpl;
 
 import io.vertx.core.http.HttpServerRequest;
-import io.vertx.ext.web.RoutingContext;
+import io.vertx.reactivex.ext.web.RoutingContext;
 
 public class InternalActionContextTest {
 

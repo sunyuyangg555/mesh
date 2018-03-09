@@ -22,9 +22,9 @@ import com.gentics.mesh.util.HttpQueryUtils;
 
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.vertx.core.Future;
-import io.vertx.core.MultiMap;
-import io.vertx.ext.web.Cookie;
-import io.vertx.ext.web.FileUpload;
+import io.vertx.reactivex.core.MultiMap;
+import io.vertx.reactivex.ext.web.Cookie;
+import io.vertx.reactivex.ext.web.FileUpload;
 
 /**
  * Implementation of a local action context. The local action context does not rely on a routing context.

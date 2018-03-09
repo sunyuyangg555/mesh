@@ -49,7 +49,7 @@ import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.core.logging.SLF4JLogDelegateFactory;
-import io.vertx.ext.web.RoutingContext;
+import io.vertx.reactivex.ext.web.RoutingContext;
 import okhttp3.OkHttpClient;
 
 public abstract class AbstractMeshTest implements TestHelperMethods, TestHttpMethods {

@@ -12,7 +12,7 @@ import org.apache.commons.lang3.NotImplementedException;
 import com.gentics.mesh.cli.BootstrapInitializer;
 import com.gentics.mesh.router.route.AbstractProjectEndpoint;
 
-import io.vertx.ext.web.Route;
+import io.vertx.reactivex.ext.web.Route;
 
 public class LanguageVerticle extends AbstractProjectEndpoint {
 

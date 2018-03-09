@@ -21,7 +21,6 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
-import com.syncleus.ferma.tx.Tx;
 import com.gentics.mesh.context.InternalActionContext;
 import com.gentics.mesh.context.impl.InternalRoutingActionContextImpl;
 import com.gentics.mesh.core.data.Group;
@@ -45,9 +44,10 @@ import com.gentics.mesh.test.context.AbstractMeshTest;
 import com.gentics.mesh.test.context.MeshTestSetting;
 import com.gentics.mesh.test.util.TestUtils;
 import com.google.common.collect.Iterables;
+import com.syncleus.ferma.tx.Tx;
 
 import io.vertx.core.json.JsonObject;
-import io.vertx.ext.web.RoutingContext;
+import io.vertx.reactivex.ext.web.RoutingContext;
 
 @MeshTestSetting(useElasticsearch = false, testSize = FULL, startServer = false)
 public class UserTest extends AbstractMeshTest implements BasicObjectTestcases {
@@ -143,7 +143,7 @@ public class UserTest extends AbstractMeshTest implements BasicObjectTestcases {
 	public void testGetPrincipal() {
 		try (Tx tx = tx()) {
 			RoutingContext rc = mockRoutingContext();
-			io.vertx.ext.auth.User user = rc.user();
+			io.vertx.reactivex.ext.auth.User user = rc.user();
 			assertNotNull(user);
 			JsonObject json = user.principal();
 			assertNotNull(json);

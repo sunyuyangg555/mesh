@@ -17,8 +17,8 @@ import com.gentics.mesh.parameter.ParameterProvider;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.vertx.core.Handler;
 import io.vertx.core.http.HttpMethod;
-import io.vertx.ext.web.Route;
-import io.vertx.ext.web.RoutingContext;
+import io.vertx.reactivex.ext.web.Route;
+import io.vertx.reactivex.ext.web.RoutingContext;
 
 /**
  * Simple wrapper for vert.x routes. The wrapper is commonly used to generate RAML descriptions for the route.

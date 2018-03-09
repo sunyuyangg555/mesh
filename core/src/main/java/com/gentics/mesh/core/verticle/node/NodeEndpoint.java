@@ -30,7 +30,7 @@ import com.gentics.mesh.rest.EndpointRoute;
 import com.gentics.mesh.router.route.AbstractProjectEndpoint;
 import com.gentics.mesh.util.UUIDUtil;
 
-import io.vertx.core.MultiMap;
+import io.vertx.reactivex.core.MultiMap;
 
 /**
  * The content verticle adds rest endpoints for manipulating nodes.
@@ -164,7 +164,7 @@ public class NodeEndpoint extends AbstractProjectEndpoint {
 		fieldGet.addQueryParameters(ImageManipulationParametersImpl.class);
 		fieldGet.method(GET);
 		fieldGet.description(
-				"Download the binary field with the given name. You can use image query parameters for crop and resize if the binary data represents an image.");
+			"Download the binary field with the given name. You can use image query parameters for crop and resize if the binary data represents an image.");
 		fieldGet.handler(rc -> {
 			String uuid = rc.request().getParam("nodeUuid");
 			String fieldName = rc.request().getParam("fieldName");
@@ -353,8 +353,8 @@ public class NodeEndpoint extends AbstractProjectEndpoint {
 	private void addUpdateHandler() {
 		EndpointRoute endpoint = createEndpoint();
 		endpoint.description("Update the node with the given uuid. It is mandatory to specify the version within the update request. "
-				+ "Mesh will automatically check for version conflicts and return a 409 error if a conflict has been detected. "
-				+ "Additional conflict checks for WebRoot path conflicts will also be performed. The node is created if no node with the specified uuid could be found.");
+			+ "Mesh will automatically check for version conflicts and return a 409 error if a conflict has been detected. "
+			+ "Additional conflict checks for WebRoot path conflicts will also be performed. The node is created if no node with the specified uuid could be found.");
 		endpoint.path("/:nodeUuid");
 		endpoint.addUriParameter("nodeUuid", "Uuid of the node", UUIDUtil.randomUUID());
 		endpoint.method(POST);
@@ -436,7 +436,7 @@ public class NodeEndpoint extends AbstractProjectEndpoint {
 		putLanguageRoute.addUriParameter("nodeUuid", "Uuid of the node", UUIDUtil.randomUUID());
 		putLanguageRoute.addUriParameter("language", "Name of the language tag", "en");
 		putLanguageRoute.description(
-				"Publish the language of the node. This will automatically assign a new major version to the node and update the draft version to the published version.");
+			"Publish the language of the node. This will automatically assign a new major version to the node and update the draft version to the published version.");
 		putLanguageRoute.exampleResponse(OK, versioningExamples.createPublishStatusModel(), "Updated publish status.");
 		putLanguageRoute.produces(APPLICATION_JSON);
 		putLanguageRoute.handler(rc -> {

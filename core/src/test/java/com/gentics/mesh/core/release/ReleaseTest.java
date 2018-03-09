@@ -44,7 +44,7 @@ import com.gentics.mesh.test.context.MeshTestSetting;
 import com.gentics.mesh.test.util.TestUtils;
 import com.syncleus.ferma.tx.Tx;
 
-import io.vertx.ext.web.RoutingContext;
+import io.vertx.reactivex.ext.web.RoutingContext;
 
 @MeshTestSetting(useElasticsearch = false, testSize = FULL, startServer = false)
 public class ReleaseTest extends AbstractMeshTest implements BasicObjectTestcases {
@@ -92,7 +92,7 @@ public class ReleaseTest extends AbstractMeshTest implements BasicObjectTestcase
 			Release releaseThree = releaseRoot.create("Three", user());
 
 			assertThat(new ArrayList<Release>(releaseRoot.findAll())).usingElementComparatorOnFields("uuid").containsExactly(initialRelease,
-					releaseOne, releaseTwo, releaseThree);
+				releaseOne, releaseTwo, releaseThree);
 		}
 	}
 
@@ -105,7 +105,7 @@ public class ReleaseTest extends AbstractMeshTest implements BasicObjectTestcase
 			assertThat(releaseRoot).as("Release Root of Project").isNotNull();
 			Release initialRelease = project.getInitialRelease();
 			assertThat(initialRelease).as("Initial Release of Project").isNotNull().isActive().isNamed(project.getName()).hasUuid().hasNext(null)
-					.hasPrevious(null);
+				.hasPrevious(null);
 			Release latestRelease = project.getLatestRelease();
 			assertThat(latestRelease).as("Latest Release of Project").matches(initialRelease);
 		}
@@ -155,10 +155,10 @@ public class ReleaseTest extends AbstractMeshTest implements BasicObjectTestcase
 			assertThat(firstNewRelease).as("First new Release").isNamed("First new Release").hasNext(secondNewRelease).hasPrevious(initialRelease);
 			assertThat(secondNewRelease).as("Second new Release").isNamed("Second new Release").hasNext(thirdNewRelease).hasPrevious(firstNewRelease);
 			assertThat(project.getLatestRelease()).as("Latest Release").isNamed("Third new Release").matches(thirdNewRelease).hasNext(null)
-					.hasPrevious(secondNewRelease);
+				.hasPrevious(secondNewRelease);
 
 			assertThat(new ArrayList<Release>(releaseRoot.findAll())).usingElementComparatorOnFields("uuid").containsExactly(initialRelease,
-					firstNewRelease, secondNewRelease, thirdNewRelease);
+				firstNewRelease, secondNewRelease, thirdNewRelease);
 
 			for (SchemaContainer schema : project.getSchemaContainerRoot().findAllIt()) {
 				for (Release release : Arrays.asList(initialRelease, firstNewRelease, secondNewRelease, thirdNewRelease)) {
@@ -252,7 +252,7 @@ public class ReleaseTest extends AbstractMeshTest implements BasicObjectTestcase
 			Project project = project();
 			Release release = latestRelease();
 			List<SchemaContainerVersion> versions = project.getSchemaContainerRoot().findAll().stream().filter(v -> !v.getName().equals("content"))
-					.map(SchemaContainer::getLatestVersion).collect(Collectors.toList());
+				.map(SchemaContainer::getLatestVersion).collect(Collectors.toList());
 
 			SchemaContainerVersionImpl newVersion = tx.getGraph().addFramedVertexExplicit(SchemaContainerVersionImpl.class);
 			newVersion.setVersion("4.0");
@@ -266,7 +266,7 @@ public class ReleaseTest extends AbstractMeshTest implements BasicObjectTestcase
 				found.add(versionedge.getSchemaContainerVersion());
 			}
 			assertThat(found).as("List of schema versions").usingElementComparatorOnFields("uuid", "name", "version")
-					.containsOnlyElementsOf(versions);
+				.containsOnlyElementsOf(versions);
 		}
 	}
 
@@ -292,7 +292,7 @@ public class ReleaseTest extends AbstractMeshTest implements BasicObjectTestcase
 
 			for (Release release : Arrays.asList(initialRelease, newRelease)) {
 				assertThat(release).as(release.getName()).hasNotSchema(schemaContainer).hasNotSchemaVersion(latestVersion)
-						.hasNotSchemaVersion(previousVersion);
+					.hasNotSchemaVersion(previousVersion);
 			}
 
 			// assign the schema to the project
@@ -300,7 +300,7 @@ public class ReleaseTest extends AbstractMeshTest implements BasicObjectTestcase
 
 			for (Release release : Arrays.asList(initialRelease, newRelease)) {
 				assertThat(release).as(release.getName()).hasSchema(schemaContainer).hasSchemaVersion(latestVersion)
-						.hasNotSchemaVersion(previousVersion);
+					.hasNotSchemaVersion(previousVersion);
 			}
 		}
 	}
@@ -334,7 +334,7 @@ public class ReleaseTest extends AbstractMeshTest implements BasicObjectTestcase
 			Project project = project();
 			Release release = latestRelease();
 			List<SchemaContainerVersion> versions = project.getSchemaContainerRoot().findAll().stream().map(SchemaContainer::getLatestVersion)
-					.collect(Collectors.toList());
+				.collect(Collectors.toList());
 
 			List<SchemaContainerVersion> activeVersions = TestUtils.toList(release.findActiveSchemaVersions());
 			assertThat(activeVersions).as("List of schema versions").usingElementComparatorOnFields("uuid", "name", "version").containsAll(versions);
@@ -360,9 +360,9 @@ public class ReleaseTest extends AbstractMeshTest implements BasicObjectTestcase
 			Release newRelease = project.getReleaseRoot().create("New Release", user());
 
 			assertThat(initialRelease).as(initialRelease.getName()).hasSchema(schemaContainer).hasSchemaVersion(firstVersion)
-					.hasNotSchemaVersion(secondVersion);
+				.hasNotSchemaVersion(secondVersion);
 			assertThat(newRelease).as(newRelease.getName()).hasSchema(schemaContainer).hasNotSchemaVersion(firstVersion)
-					.hasSchemaVersion(secondVersion);
+				.hasSchemaVersion(secondVersion);
 		}
 	}
 
@@ -371,7 +371,7 @@ public class ReleaseTest extends AbstractMeshTest implements BasicObjectTestcase
 		try (Tx tx = tx()) {
 			Project project = project();
 			List<MicroschemaContainerVersion> versions = project.getMicroschemaContainerRoot().findAll().stream()
-					.map(MicroschemaContainer::getLatestVersion).collect(Collectors.toList());
+				.map(MicroschemaContainer::getLatestVersion).collect(Collectors.toList());
 
 			List<MicroschemaContainerVersion> found = new ArrayList<>();
 			for (MicroschemaContainerVersion version : project.getInitialRelease().findAllMicroschemaVersions()) {
@@ -403,7 +403,7 @@ public class ReleaseTest extends AbstractMeshTest implements BasicObjectTestcase
 
 			for (Release release : Arrays.asList(initialRelease, newRelease)) {
 				assertThat(release).as(release.getName()).hasNotMicroschema(microschemaContainer).hasNotMicroschemaVersion(latestVersion)
-						.hasNotMicroschemaVersion(previousVersion);
+					.hasNotMicroschemaVersion(previousVersion);
 			}
 
 			// assign the schema to the project
@@ -411,7 +411,7 @@ public class ReleaseTest extends AbstractMeshTest implements BasicObjectTestcase
 
 			for (Release release : Arrays.asList(initialRelease, newRelease)) {
 				assertThat(release).as(release.getName()).hasMicroschema(microschemaContainer).hasMicroschemaVersion(latestVersion)
-						.hasNotMicroschemaVersion(previousVersion);
+					.hasNotMicroschemaVersion(previousVersion);
 			}
 		}
 	}
@@ -435,7 +435,7 @@ public class ReleaseTest extends AbstractMeshTest implements BasicObjectTestcase
 
 			for (Release release : Arrays.asList(initialRelease, newRelease)) {
 				assertThat(release).as(release.getName()).hasNotMicroschema(microschemaContainer)
-						.hasNotMicroschemaVersion(microschemaContainer.getLatestVersion());
+					.hasNotMicroschemaVersion(microschemaContainer.getLatestVersion());
 			}
 		}
 	}
@@ -459,9 +459,9 @@ public class ReleaseTest extends AbstractMeshTest implements BasicObjectTestcase
 			Release newRelease = project.getReleaseRoot().create("New Release", user());
 
 			assertThat(initialRelease).as(initialRelease.getName()).hasMicroschema(microschemaContainer).hasMicroschemaVersion(firstVersion)
-					.hasNotMicroschemaVersion(secondVersion);
+				.hasNotMicroschemaVersion(secondVersion);
 			assertThat(newRelease).as(newRelease.getName()).hasMicroschema(microschemaContainer).hasNotMicroschemaVersion(firstVersion)
-					.hasMicroschemaVersion(secondVersion);
+				.hasMicroschemaVersion(secondVersion);
 		}
 	}
 

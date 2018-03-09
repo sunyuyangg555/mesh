@@ -11,8 +11,8 @@ import com.gentics.mesh.rest.EndpointRoute;
 import com.gentics.mesh.rest.impl.EndpointImpl;
 import com.gentics.mesh.router.RouterStorage;
 
-import io.vertx.ext.web.Route;
-import io.vertx.ext.web.Router;
+import io.vertx.reactivex.ext.web.Route;
+import io.vertx.reactivex.ext.web.Router;
 
 /**
  * An abstract class that should be used when creating new endpoints.
@@ -51,7 +51,7 @@ public abstract class AbstractEndpoint implements Endpoint {
 	 * Add a route which will secure all endpoints.
 	 */
 	protected void secureAll() {
-		getRouter().route("/*").handler(authHandler);
+		getRouter().route("/*").getDelegate().handler(authHandler);
 	}
 
 	/**
