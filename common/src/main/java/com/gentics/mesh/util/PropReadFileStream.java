@@ -31,7 +31,7 @@ public class PropReadFileStream {
 	 */
 	public static Single<PropReadFileStream> openFile(Vertx vertx, String path) {
 		FileSystem fs = vertx.fileSystem();
-		return Single.zip(fs.rxProps(path).map(props -> props.getDelegate()), RxUtil.openFile(path, READ_ONLY),
+		return Single.zip(fs.rxProps(path).map(props -> props.getDelegate()), fs.rxOpen(path, READ_ONLY),
 			(props, file) -> {
 				return new PropReadFileStream(props, file, path);
 			});

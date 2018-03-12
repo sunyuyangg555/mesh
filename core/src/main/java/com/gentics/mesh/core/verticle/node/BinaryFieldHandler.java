@@ -65,9 +65,7 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.web.FileUpload;
 import io.vertx.ext.web.RoutingContext;
-import io.vertx.reactivex.core.Vertx;
 import io.vertx.reactivex.core.buffer.Buffer;
-import io.vertx.reactivex.core.file.FileSystem;
 
 /**
  * Handler which contains field API specific request handlers.
@@ -398,7 +396,6 @@ public class BinaryFieldHandler extends AbstractHandler {
 			throw error(BAD_REQUEST, "image_error_language_not_set");
 		}
 
-		FileSystem fs = new Vertx(vertx).fileSystem();
 		db.asyncTx(() -> {
 			// Load needed elements
 			Project project = ac.getProject();
@@ -463,21 +460,23 @@ public class BinaryFieldHandler extends AbstractHandler {
 					}
 
 					// Resize the original image and store the result in the filesystem
-					Single<TransformationResult> obsTransformation = imageManipulator.handleResize(stream, binaryUuid, parameters).flatMap(props -> {
-						Flowable<Buffer> obs = props.getFile().toFlowable();
+					Single<TransformationResult> obsTransformation = imageManipulator
+						.handleResize(stream, binaryUuid, parameters)
+						.flatMap(props -> {
+							Flowable<Buffer> obs = props.getFile().toFlowable();
 
-						// Hash the resized image data and store it using the computed fieldUuid + hash
-						Single<String> hash = FileUtils.hash(obs);
+							// Hash the resized image data and store it using the computed fieldUuid + hash
+							Single<String> hash = FileUtils.hash(obs);
 
-						// The image was stored and hashed. Now we need to load the stored file again and check the image properties
-						Single<ImageInfo> info = imageManipulator.readImageInfo(props.getPath());
+							// The image was stored and hashed. Now we need to load the stored file again and check the image properties
+							Single<ImageInfo> info = imageManipulator.readImageInfo(props.getPath());
 
-						return Single.zip(hash, info, (hashV, infoV) -> {
-							// Return a POJO which hold all information that is needed to update the field
-							TransformationResult result = new TransformationResult(hashV, props.getProps().size(), infoV, props.getPath());
-							return Single.just(result);
-						}).flatMap(e -> e);
-					});
+							return Single.zip(hash, info, (hashV, infoV) -> {
+								// Return a POJO which hold all information that is needed to update the field
+								TransformationResult result = new TransformationResult(hashV, props.getProps().size(), infoV, props.getPath());
+								return props.getFile().rxClose().andThen(Single.just(result));
+							}).flatMap(e -> e);
+						});
 
 					// Now that the binary data has been resized and inspected we can use this information to create a new binary and store it.
 					TransformationResult result = obsTransformation.blockingGet();
@@ -490,7 +489,7 @@ public class BinaryFieldHandler extends AbstractHandler {
 						// Open the file again since we already read from it. We need to read it again in order to store it in the binary storage.
 						Flowable<Buffer> data = RxUtil.openFileBuffer(result.getFilePath(), READ_ONLY);
 						binary = binaryRoot.create(hash, result.getSize());
-						binaryStorage.store(data, binary.getUuid()).andThen(Single.just(result)).toCompletable().blockingAwait();
+						binaryStorage.store(data, binary.getUuid()).blockingAwait();
 					} else {
 						log.debug("Data of resized image with hash {" + hash + "} has already been stored. Skipping store.");
 					}
