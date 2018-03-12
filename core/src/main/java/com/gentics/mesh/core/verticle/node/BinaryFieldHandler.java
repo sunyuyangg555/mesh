@@ -4,6 +4,7 @@ import static com.gentics.mesh.core.data.ContainerType.DRAFT;
 import static com.gentics.mesh.core.data.relationship.GraphPermission.READ_PUBLISHED_PERM;
 import static com.gentics.mesh.core.data.relationship.GraphPermission.UPDATE_PERM;
 import static com.gentics.mesh.core.rest.error.Errors.error;
+import static com.gentics.mesh.util.RxUtil.READ_ONLY;
 import static io.netty.handler.codec.http.HttpResponseStatus.BAD_REQUEST;
 import static io.netty.handler.codec.http.HttpResponseStatus.CREATED;
 import static io.netty.handler.codec.http.HttpResponseStatus.INTERNAL_SERVER_ERROR;
@@ -60,14 +61,12 @@ import dagger.Lazy;
 import io.reactivex.Flowable;
 import io.reactivex.Single;
 import io.vertx.core.MultiMap;
-import io.vertx.core.buffer.Buffer;
-import io.vertx.core.file.AsyncFile;
-import io.vertx.core.file.OpenOptions;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.web.FileUpload;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.reactivex.core.Vertx;
+import io.vertx.reactivex.core.buffer.Buffer;
 import io.vertx.reactivex.core.file.FileSystem;
 
 /**
@@ -157,6 +156,9 @@ public class BinaryFieldHandler extends AbstractHandler {
 	 *            Additional form data attributes
 	 */
 	public void handleUpdateField(InternalActionContext ac, String nodeUuid, String fieldName, MultiMap attributes) {
+		if (log.isDebugEnabled()) {
+			log.debug("Handling binary field update on node {" + nodeUuid + "} and field {" + fieldName + "}");
+		}
 		validateParameter(nodeUuid, "uuid");
 		validateParameter(fieldName, "fieldName");
 
@@ -245,17 +247,25 @@ public class BinaryFieldHandler extends AbstractHandler {
 				throw error(BAD_REQUEST, "error_found_field_is_not_binary", fieldName);
 			}
 
-			SearchQueueBatch batch = searchQueue.create();
 			// Create a new node version field container to store the upload
 			NodeGraphFieldContainer newDraftVersion = node.createGraphFieldContainer(language, release, ac.getUser(), latestDraftVersion, true);
+			if (log.isDebugEnabled()) {
+				log.debug("Created new container version for node {" + nodeUuid + "}. New container {" + newDraftVersion.getUuid() + "}");
+			}
 
 			// Check whether the binary with the given hashsum was already stored
 			BinaryRoot binaryRoot = boot.get().meshRoot().getBinaryRoot();
 			String hash = FileUtils.hash(ul.uploadedFileName());
+			if (log.isDebugEnabled()) {
+				log.debug("Calcluated hash {" + hash + "} for file {" + ul.fileName() + "}");
+			}
 			Binary binary = binaryRoot.findByHash(hash);
 
 			// Create a new binary if the data was not already stored
 			boolean storeBinary = binary == null;
+			if (log.isDebugEnabled()) {
+				log.debug("Binary was not found so we need to store it for node {" + nodeUuid + "} and field {" + fieldName + "}");
+			}
 			if (storeBinary) {
 				binary = binaryRoot.create(hash, ul.size());
 			}
@@ -281,13 +291,19 @@ public class BinaryFieldHandler extends AbstractHandler {
 
 			// Now get rid of the old field
 			if (oldField != null) {
+				if (log.isDebugEnabled()) {
+					log.debug("Removing old field {" + oldField.getUuid() + "}");
+				}
 				oldField.removeField(newDraftVersion);
 			}
 			// If the binary field is the segment field, we need to update the webroot info in the node
 			if (field.getFieldKey().equals(newDraftVersion.getSchemaContainerVersion().getSchema().getSegmentField())) {
+				if (log.isDebugEnabled()) {
+					log.debug("Updating webroot path for draft container {" + newDraftVersion.getUuid() + "}");
+				}
 				newDraftVersion.updateWebrootPathInfo(release.getUuid(), "node_conflicting_segmentfield_upload");
 			}
-
+			SearchQueueBatch batch = searchQueue.create();
 			return batch.store(node, release.getUuid(), DRAFT, false).processAsync().andThen(node.transformToRest(ac, 0));
 		}).subscribe(model -> ac.send(model, CREATED), ac::fail);
 	}
@@ -308,50 +324,31 @@ public class BinaryFieldHandler extends AbstractHandler {
 		String uploadFile = ul.uploadedFileName();
 
 		Binary binary = field.getBinary();
-		String hash = binary.getSHA512Sum();
 		String binaryUuid = binary.getUuid();
 		String contentType = ul.contentType();
 		boolean isImage = contentType.startsWith("image/");
 
-		// Calculate how many streams will connect to the data stream
-		int neededDataStreams = 0;
+		// Only gather image info for actual images. Otherwise return an empty image info object.
+		Single<Optional<ImageInfo>> imageInfoSingle = Single.just(Optional.empty());
 		if (isImage) {
-			neededDataStreams++;
+			imageInfoSingle = processImageInfo(ac, uploadFile);
 		}
+		ImageInfo imageInfo = imageInfoSingle.blockingGet().orElse(null);
+
+		// Store the data
+		Single<Long> store = Single.just(ul.size());
 		if (storeBinary) {
-			neededDataStreams++;
+			Flowable<Buffer> stream = RxUtil.openFileBuffer(uploadFile, READ_ONLY);
+			store = binaryStorage.store(stream, binaryUuid).andThen(Single.just(ul.size()));
 		}
+		long size = store.blockingGet();
+		log.debug("Stored {" + size + "} bytes in binary storage for binary {" + binaryUuid + "}");
 
-		if (neededDataStreams > 0) {
-			// Only gather image info for actual images. Otherwise return an empty image info object.
-			Single<Optional<ImageInfo>> imageInfo = Single.just(Optional.empty());
-			if (isImage) {
-				imageInfo = processImageInfo(ac, uploadFile);
-			}
-
-			// Store the data
-			Single<Long> store = Single.just(ul.size());
-			if (storeBinary) {
-				AsyncFile asyncFile = Mesh.vertx().fileSystem().openBlocking(uploadFile, new OpenOptions());
-				Flowable<Buffer> stream = RxUtil.toBufferFlow(asyncFile);
-				store = binaryStorage.store(stream, binaryUuid).andThen(Single.just(ul.size()));
-			}
-
-			// Handle the data in parallel
-			TransformationResult info = Single.zip(imageInfo, store, (imageinfoOpt, size) -> {
-				ImageInfo iinfo = null;
-				if (imageinfoOpt.isPresent()) {
-					iinfo = imageinfoOpt.get();
-				}
-				return new TransformationResult(hash, 0, iinfo, null);
-			}).blockingGet();
-			// Only add image information if image properties were found
-			if (info.getImageInfo() != null) {
-				binary.setImageHeight(info.getImageInfo().getHeight());
-				binary.setImageWidth(info.getImageInfo().getWidth());
-				field.setImageDominantColor(info.getImageInfo().getDominantColor());
-			}
-
+		// Only add image information if image properties were found
+		if (imageInfo != null) {
+			binary.setImageHeight(imageInfo.getHeight());
+			binary.setImageWidth(imageInfo.getWidth());
+			field.setImageDominantColor(imageInfo.getDominantColor());
 		}
 
 		field.setFileName(ul.fileName());
@@ -466,18 +463,18 @@ public class BinaryFieldHandler extends AbstractHandler {
 					}
 
 					// Resize the original image and store the result in the filesystem
-					Single<TransformationResult> obsTransformation = imageManipulator.handleResize(stream, binaryUuid, parameters).flatMap(file -> {
-						Flowable<Buffer> obs = RxUtil.toBufferFlow(file.getFile());
+					Single<TransformationResult> obsTransformation = imageManipulator.handleResize(stream, binaryUuid, parameters).flatMap(props -> {
+						Flowable<Buffer> obs = props.getFile().toFlowable();
 
 						// Hash the resized image data and store it using the computed fieldUuid + hash
 						Single<String> hash = FileUtils.hash(obs);
 
 						// The image was stored and hashed. Now we need to load the stored file again and check the image properties
-						Single<ImageInfo> info = imageManipulator.readImageInfo(file.getPath());
+						Single<ImageInfo> info = imageManipulator.readImageInfo(props.getPath());
 
 						return Single.zip(hash, info, (hashV, infoV) -> {
 							// Return a POJO which hold all information that is needed to update the field
-							TransformationResult result = new TransformationResult(hashV, file.getProps().size(), infoV, file.getPath());
+							TransformationResult result = new TransformationResult(hashV, props.getProps().size(), infoV, props.getPath());
 							return Single.just(result);
 						}).flatMap(e -> e);
 					});
@@ -491,7 +488,7 @@ public class BinaryFieldHandler extends AbstractHandler {
 					// Check whether the binary was already stored.
 					if (binary == null) {
 						// Open the file again since we already read from it. We need to read it again in order to store it in the binary storage.
-						Flowable<Buffer> data = fs.rxOpen(result.getFilePath(), new OpenOptions()).toFlowable().flatMap(RxUtil::toBufferFlow);
+						Flowable<Buffer> data = RxUtil.openFileBuffer(result.getFilePath(), READ_ONLY);
 						binary = binaryRoot.create(hash, result.getSize());
 						binaryStorage.store(data, binary.getUuid()).andThen(Single.just(result)).toCompletable().blockingAwait();
 					} else {

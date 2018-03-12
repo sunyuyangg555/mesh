@@ -5,7 +5,7 @@ import com.gentics.mesh.core.data.node.field.BinaryGraphField;
 import com.gentics.mesh.core.rest.node.field.image.Point;
 
 import io.reactivex.Flowable;
-import io.vertx.core.buffer.Buffer;
+import io.vertx.reactivex.core.buffer.Buffer;
 
 /**
  * Vertex which contains the actual information about the binary content that is referenced by an {@link BinaryGraphField}.

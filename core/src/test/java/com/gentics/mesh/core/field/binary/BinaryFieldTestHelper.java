@@ -8,7 +8,7 @@ import com.gentics.mesh.dagger.MeshInternal;
 import com.gentics.mesh.util.FileUtils;
 
 import io.reactivex.Flowable;
-import io.vertx.core.buffer.Buffer;
+import io.vertx.reactivex.core.buffer.Buffer;
 
 public interface BinaryFieldTestHelper {
 

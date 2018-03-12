@@ -1,6 +1,7 @@
 package com.gentics.mesh.image;
 
 import static com.gentics.mesh.core.rest.error.Errors.error;
+import static com.gentics.mesh.util.RxUtil.inputStream;
 import static io.netty.handler.codec.http.HttpResponseStatus.BAD_REQUEST;
 
 import java.awt.AlphaComposite;
@@ -33,15 +34,14 @@ import com.gentics.mesh.parameter.ImageManipulationParameters;
 import com.gentics.mesh.parameter.image.CropMode;
 import com.gentics.mesh.parameter.image.ImageRect;
 import com.gentics.mesh.util.PropReadFileStream;
-import com.gentics.mesh.util.RxUtil;
 
 import io.reactivex.Flowable;
 import io.reactivex.Single;
-import io.vertx.core.buffer.Buffer;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.reactivex.core.Vertx;
 import io.vertx.reactivex.core.WorkerExecutor;
+import io.vertx.reactivex.core.buffer.Buffer;
 
 /**
  * The ImgScalr Manipulator uses a pure java imageio image resizer.
@@ -224,7 +224,10 @@ public class ImgscalrImageManipulator extends AbstractImageManipulator {
 	 */
 	private Single<BufferedImage> readImage(Flowable<Buffer> stream) {
 		return workerPool.rxExecuteBlocking(bc -> {
-			try (InputStream ins = RxUtil.toInputStream(stream, vertx)) {
+			if (log.isDebugEnabled()) {
+				log.debug("Reading image properties from stream");
+			}
+			try (InputStream ins = stream.to(inputStream(vertx))) {
 				if (log.isDebugEnabled()) {
 					log.debug("Reading image from stream.." + stream.hashCode());
 				}

@@ -36,6 +36,7 @@ import com.gentics.mesh.Mesh;
 import com.gentics.mesh.core.data.NodeGraphFieldContainer;
 import com.gentics.mesh.core.data.node.Node;
 import com.gentics.mesh.core.data.node.field.BinaryGraphField;
+import com.gentics.mesh.core.rest.node.NodeCreateRequest;
 import com.gentics.mesh.core.rest.node.NodeDownloadResponse;
 import com.gentics.mesh.core.rest.node.NodeResponse;
 import com.gentics.mesh.core.rest.node.field.BinaryField;
@@ -229,6 +230,39 @@ public class BinaryFieldUploadEndpointTest extends AbstractMeshTest {
 	}
 
 	@Test
+	public void testUploadManyBrokenImages() {
+		final String contentType = "image/jpeg";
+
+		String parentNodeUuid;
+		String schemaName;
+		try (Tx tx = tx()) {
+			Node node = folder("news");
+			// Add a field to the schema
+			SchemaModel schema = node.getSchemaContainer().getLatestVersion().getSchema();
+			schema.addField(FieldUtil.createBinaryFieldSchema("image"));
+			node.getSchemaContainer().getLatestVersion().setSchema(schema);
+			schemaName = schema.getName();
+			parentNodeUuid = node.getUuid();
+			tx.success();
+		}
+
+		Observable.range(1, 10_000).flatMapSingle(i -> {
+			String fileName = "somefile" + i + ".dat";
+			NodeCreateRequest nodeCreateRequest = new NodeCreateRequest();
+			nodeCreateRequest.setSchemaName(schemaName);
+			nodeCreateRequest.setParentNodeUuid(parentNodeUuid);
+			nodeCreateRequest.setLanguage("en");
+
+			System.out.println("Creating file " + i);
+			return client().createNode(PROJECT_NAME, nodeCreateRequest).toSingle().flatMap(response -> {
+				Buffer buffer = TestUtils.randomBuffer(2000+i);
+				return client().updateNodeBinaryField(PROJECT_NAME, response.getUuid(), "en", response.getVersion(), "image", buffer, fileName,
+					contentType).toSingle();
+			});
+		}).blockingLast();
+	}
+
+	@Test
 	public void testUploadMultipleBrokenImages() {
 		String contentType = "image/jpeg";
 		int binaryLen = 10000;
@@ -236,7 +270,7 @@ public class BinaryFieldUploadEndpointTest extends AbstractMeshTest {
 		try (Tx tx = tx()) {
 			Node node = folder("news");
 
-			// Add a schema called nonBinary
+			// Add a new field to the schema
 			SchemaModel schema = node.getSchemaContainer().getLatestVersion().getSchema();
 			schema.addField(FieldUtil.createBinaryFieldSchema("image"));
 			node.getSchemaContainer().getLatestVersion().setSchema(schema);

@@ -10,7 +10,7 @@ import com.gentics.mesh.util.PropReadFileStream;
 
 import io.reactivex.Flowable;
 import io.reactivex.Single;
-import io.vertx.core.buffer.Buffer;
+import io.vertx.reactivex.core.buffer.Buffer;
 
 /**
  * SPI provider interface for image manipulators.

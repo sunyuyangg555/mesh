@@ -247,7 +247,7 @@ public class NodeEndpointBinaryFieldTest extends AbstractMeshTest {
 		assertEquals("#737042", response.getFields().getBinaryField("image1").getDominantColor());
 		assertEquals("#737042", response.getFields().getBinaryField("image2").getDominantColor());
 
-		imageFields.flatMap(downloadBinary).map(NodeDownloadResponse::getBuffer).map(FileUtils::hash).map(e -> e.blockingGet()).map(e -> assertSum)
+		imageFields.flatMap(downloadBinary).map(b -> new io.vertx.reactivex.core.buffer.Buffer(b.getBuffer())).map(FileUtils::hash).map(e -> e.blockingGet()).map(e -> assertSum)
 			.ignoreElements().blockingAwait();
 	}
 

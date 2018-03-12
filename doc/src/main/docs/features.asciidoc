@@ -912,6 +912,25 @@ POST /api/v1/demo/nodes/df8beb3922c94ea28beb3922c94ea2f6/binaryTransform/image
 }
 ----
 
+
+*Example Request:*
+[source,bash]
+----
+POST /api/v1/demo/nodes/df8beb3922c94ea28beb3922c94ea2f6/binaryTransform/image
+...
+{
+  "version" : "1.0",
+  "language" : "en",
+  "cropRect" : {
+    "startX": 20,
+    "startY": 20,
+    "width": 100,
+    "height": 100
+  }
+}
+----
+
+
 [imagemanipulationparams]
 === Image Manipulation Query Parameters
 

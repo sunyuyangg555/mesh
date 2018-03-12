@@ -14,9 +14,9 @@ import io.netty.buffer.ByteBuf;
 import io.reactivex.Completable;
 import io.reactivex.Flowable;
 import io.vertx.core.Vertx;
-import io.vertx.core.buffer.Buffer;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import io.vertx.reactivex.core.buffer.Buffer;
 import software.amazon.awssdk.core.async.AsyncRequestProvider;
 import software.amazon.awssdk.core.async.AsyncResponseHandler;
 import software.amazon.awssdk.core.auth.AwsCredentials;
@@ -165,7 +165,7 @@ public class S3BinaryStorage extends AbstractBinaryStorage {
 			client.putObject(request, new AsyncRequestProvider() {
 				@Override
 				public void subscribe(Subscriber<? super ByteBuffer> s) {
-					stream.map(Buffer::getByteBuf).map(ByteBuf::nioBuffer).subscribe(s);
+					stream.map(b-> b.getDelegate().getByteBuf()).map(ByteBuf::nioBuffer).subscribe(s);
 				}
 
 				@Override

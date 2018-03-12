@@ -37,10 +37,11 @@ import com.gentics.mesh.util.RxUtil;
 
 import io.reactivex.Flowable;
 import io.reactivex.Single;
-import io.vertx.core.buffer.Buffer;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.reactivex.core.Vertx;
+import io.vertx.reactivex.core.buffer.Buffer;
+import io.vertx.reactivex.core.file.AsyncFile;
 
 public class ImgscalrImageManipulatorTest extends AbstractImageTest {
 
@@ -62,12 +63,12 @@ public class ImgscalrImageManipulatorTest extends AbstractImageTest {
 			log.debug("Handling " + imageName);
 
 			Single<Buffer> obs = manipulator.handleResize(bs, imageName, new ImageManipulationParametersImpl().setWidth(150).setHeight(180)).map(
-				PropReadFileStream::getFile).map(RxUtil::toBufferFlow).flatMap(RxUtil::readEntireData);
+				PropReadFileStream::getFile).map(AsyncFile::toFlowable).flatMap(RxUtil::readEntireData);
 			CountDownLatch latch = new CountDownLatch(1);
 			obs.subscribe(buffer -> {
 				try {
 					assertNotNull(buffer);
-					byte[] data = buffer.getBytes();
+					byte[] data = buffer.getDelegate().getBytes();
 					try (ByteArrayInputStream bis = new ByteArrayInputStream(data)) {
 						BufferedImage resizedImage = ImageIO.read(bis);
 						assertThat(resizedImage).hasSize(150, 180).matches(refImage);
@@ -94,7 +95,7 @@ public class ImgscalrImageManipulatorTest extends AbstractImageTest {
 		checkImages((imageName, width, height, color, refImage, stream) -> {
 			String path = RxUtil.readEntireData(stream).map(data -> {
 				File file = new File("/tmp/" + imageName + "reference.jpg");
-				FileUtils.writeByteArrayToFile(file, data.getBytes());
+				FileUtils.writeByteArrayToFile(file, data.getDelegate().getBytes());
 				return file.getAbsolutePath();
 			}).blockingGet();
 
@@ -120,7 +121,7 @@ public class ImgscalrImageManipulatorTest extends AbstractImageTest {
 				throw new RuntimeException("Could not find image {" + path + "}");
 			}
 			byte[] bytes = IOUtils.toByteArray(ins);
-			Flowable<Buffer> bs = Flowable.just(Buffer.buffer(bytes));
+			Flowable<Buffer> bs = Flowable.just(new Buffer(io.vertx.core.buffer.Buffer.buffer(bytes)));
 			int width = image.getInt("w");
 			int height = image.getInt("h");
 			String color = image.getString("dominantColor");

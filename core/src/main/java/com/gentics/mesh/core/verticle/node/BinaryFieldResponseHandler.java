@@ -16,13 +16,13 @@ import com.gentics.mesh.core.image.spi.ImageManipulator;
 import com.gentics.mesh.http.MeshHeaders;
 import com.gentics.mesh.storage.BinaryStorage;
 import com.gentics.mesh.util.ETag;
-import com.gentics.mesh.util.RxUtil;
 
 import io.reactivex.Flowable;
-import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.ext.web.RoutingContext;
+import io.vertx.reactivex.core.buffer.Buffer;
+import io.vertx.reactivex.core.file.AsyncFile;
 
 /**
  * Handler which will accept {@link BinaryGraphField} elements and return the binary data using the given context.
@@ -84,8 +84,8 @@ public class BinaryFieldResponseHandler {
 						// TODO encode filename?
 						response.putHeader("content-disposition", "inline; filename=" + fileName);
 						return fileWithProps.getFile();
-					}).flatMap(RxUtil::toBufferFlow);
-				resizedData.subscribe(response::write, rc::fail, response::end);
+					}).flatMap(AsyncFile::toFlowable);
+				resizedData.subscribe(b -> response.write(b.getDelegate()), rc::fail, response::end);
 			} else {
 				response.putHeader(HttpHeaders.CONTENT_LENGTH, contentLength);
 				if (contentType != null) {
@@ -96,7 +96,7 @@ public class BinaryFieldResponseHandler {
 				// TODO encode filename?
 				// TODO images and pdf files should be shown in inline format
 				response.putHeader("content-disposition", "attachment; filename=" + fileName);
-				binary.getStream().subscribe(response::write, rc::fail, response::end);
+				binary.getStream().subscribe(b -> response.write(b.getDelegate()), rc::fail, response::end);
 			}
 		}
 	}

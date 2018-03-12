@@ -4,7 +4,7 @@ import com.gentics.mesh.core.data.node.field.BinaryGraphField;
 
 import io.reactivex.Completable;
 import io.reactivex.Flowable;
-import io.vertx.core.buffer.Buffer;
+import io.vertx.reactivex.core.buffer.Buffer;
 
 /**
  * A binary storage provides means to store and retrieve binary data.

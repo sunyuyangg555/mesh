@@ -1,10 +1,11 @@
 package com.gentics.mesh.util;
 
+import static com.gentics.mesh.util.RxUtil.READ_ONLY;
+
 import io.reactivex.Single;
-import io.vertx.core.file.AsyncFile;
 import io.vertx.core.file.FileProps;
-import io.vertx.core.file.OpenOptions;
 import io.vertx.reactivex.core.Vertx;
+import io.vertx.reactivex.core.file.AsyncFile;
 import io.vertx.reactivex.core.file.FileSystem;
 
 /**
@@ -14,8 +15,6 @@ public class PropReadFileStream {
 	private FileProps props;
 	private AsyncFile file;
 	private String path;
-
-	private static final OpenOptions openOptions = new OpenOptions().setRead(true);
 
 	private PropReadFileStream(FileProps props, AsyncFile file, String path) {
 		this.props = props;
@@ -32,10 +31,10 @@ public class PropReadFileStream {
 	 */
 	public static Single<PropReadFileStream> openFile(Vertx vertx, String path) {
 		FileSystem fs = vertx.fileSystem();
-		return Single.zip(fs.rxProps(path).map(props -> props.getDelegate()), fs.rxOpen(path, openOptions).map(file -> file.getDelegate()),
-				(props, file) -> {
-					return new PropReadFileStream(props, file, path);
-				});
+		return Single.zip(fs.rxProps(path).map(props -> props.getDelegate()), RxUtil.openFile(path, READ_ONLY),
+			(props, file) -> {
+				return new PropReadFileStream(props, file, path);
+			});
 	}
 
 	/**

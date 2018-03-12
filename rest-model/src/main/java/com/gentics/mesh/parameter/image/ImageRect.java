@@ -17,7 +17,7 @@ public class ImageRect {
 	private int height;
 
 	/**
-	 * Create a new image rect by parsing the given rect string which contains the rectengular dimensions in the format: x,y,w,h
+	 * Create a new image rect by parsing the given rect string which contains the rectangular dimensions in the format: x,y,w,h
 	 * 
 	 * @param dimensions
 	 */

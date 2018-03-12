@@ -1,6 +1,7 @@
 package com.gentics.mesh.storage;
 
 import static com.gentics.mesh.core.rest.error.Errors.error;
+import static com.gentics.mesh.util.RxUtil.READ_ONLY;
 import static io.netty.handler.codec.http.HttpResponseStatus.BAD_REQUEST;
 
 import java.io.File;
@@ -16,10 +17,10 @@ import com.gentics.mesh.util.RxUtil;
 
 import io.reactivex.Completable;
 import io.reactivex.Flowable;
-import io.vertx.core.buffer.Buffer;
 import io.vertx.core.file.OpenOptions;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import io.vertx.reactivex.core.buffer.Buffer;
 import io.vertx.reactivex.core.file.FileSystem;
 
 @Singleton
@@ -34,7 +35,6 @@ public class LocalBinaryStorage extends AbstractBinaryStorage {
 	@Override
 	public Completable store(Flowable<Buffer> stream, String uuid) {
 		return Completable.defer(() -> {
-			FileSystem fileSystem = FileSystem.newInstance(Mesh.vertx().fileSystem());
 			String path = getFilePath(uuid);
 			log.debug("Saving data for field to path {" + path + "}");
 			MeshUploadOptions uploadOptions = Mesh.mesh().getOptions().getUploadOptions();
@@ -52,13 +52,14 @@ public class LocalBinaryStorage extends AbstractBinaryStorage {
 			}
 
 			File targetFile = new File(uploadFolder, uuid + ".bin");
-			return fileSystem.rxOpen(targetFile.getAbsolutePath(), new OpenOptions()).flatMapCompletable(file -> {
+			return Mesh.rxVertx().fileSystem().rxOpen(targetFile.getAbsolutePath(), new OpenOptions()).flatMapCompletable(file -> {
+				// Now write the stream to the file and handle errors and the final flush.
 				return stream
-					.map(io.vertx.reactivex.core.buffer.Buffer::new)
 					.doOnNext(file::write)
-					.doOnComplete(file::flush)
-					.doOnTerminate(file::close)
-					.ignoreElements();
+					.ignoreElements()
+					.andThen(file.rxFlush())
+					.doOnDispose(file::close)
+					.doFinally(file::close);
 			});
 		});
 	}
@@ -84,11 +85,7 @@ public class LocalBinaryStorage extends AbstractBinaryStorage {
 	@Override
 	public Flowable<Buffer> read(String binaryUuid) {
 		String path = getFilePath(binaryUuid);
-		Flowable<Buffer> obs = FileSystem.newInstance(Mesh.vertx().fileSystem())
-			.rxOpen(path, new OpenOptions())
-			.toFlowable()
-			.flatMap(RxUtil::toBufferFlow);
-		return obs;
+		return RxUtil.openFileBuffer(path, READ_ONLY);
 	}
 
 	/**
@@ -114,16 +111,16 @@ public class LocalBinaryStorage extends AbstractBinaryStorage {
 		String path = getFilePath(binaryUuid);
 		return FileSystem.newInstance(Mesh.vertx().fileSystem())
 
-				.rxDelete(path)
-				// Don't fail if the file is not even in the local storage
-				.onErrorComplete(e -> {
-					Throwable cause = e.getCause();
-					if (cause != null) {
-						return cause instanceof NoSuchFileException;
-					} else {
-						return e instanceof NoSuchFileException;
-					}
-				});
+			.rxDelete(path)
+			// Don't fail if the file is not even in the local storage
+			.onErrorComplete(e -> {
+				Throwable cause = e.getCause();
+				if (cause != null) {
+					return cause instanceof NoSuchFileException;
+				} else {
+					return e instanceof NoSuchFileException;
+				}
+			});
 	}
 
 }

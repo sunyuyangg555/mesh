@@ -34,6 +34,7 @@ import io.vertx.ext.web.Router;
 import io.vertx.ext.web.handler.BodyHandler;
 import io.vertx.ext.web.handler.CookieHandler;
 import io.vertx.ext.web.handler.CorsHandler;
+import io.vertx.ext.web.handler.LoggerFormat;
 import io.vertx.ext.web.handler.LoggerHandler;
 import io.vertx.ext.web.handler.impl.BodyHandlerImpl;
 
@@ -196,8 +197,11 @@ public class RouterStorage {
 		if (rootRouter == null) {
 			rootRouter = Router.router(Mesh.vertx());
 
-			// Root handlers
+			// Log before each request
+			rootRouter.route().handler(LoggerHandler.create(true, LoggerFormat.DEFAULT));
+			// Log after each request
 			rootRouter.route().handler(LoggerHandler.create());
+
 			// TODO add a dedicated error for api router that informs about
 			// APPLICATION_JSON requirements. This may not be true for other
 			// routes (eg. custom

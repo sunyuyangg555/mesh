@@ -12,7 +12,7 @@ import com.gentics.mesh.graphdb.spi.FieldType;
 import com.gentics.mesh.storage.BinaryStorage;
 
 import io.reactivex.Flowable;
-import io.vertx.core.buffer.Buffer;
+import io.vertx.reactivex.core.buffer.Buffer;
 
 /**
  * @see Binary

@@ -4,20 +4,25 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
-import java.util.function.Function;
+
+import com.gentics.mesh.Mesh;
 
 import io.reactivex.Completable;
 import io.reactivex.Flowable;
 import io.reactivex.Observable;
 import io.reactivex.Single;
-import io.vertx.core.buffer.Buffer;
-import io.vertx.core.file.AsyncFile;
+import io.reactivex.functions.Function;
+import io.vertx.core.file.OpenOptions;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.reactivex.RxHelper;
 import io.vertx.reactivex.core.Vertx;
+import io.vertx.reactivex.core.buffer.Buffer;
+import io.vertx.reactivex.core.file.AsyncFile;
 
 public final class RxUtil {
+
+	public static final OpenOptions READ_ONLY = new OpenOptions().setRead(true);
 
 	private static final Logger log = LoggerFactory.getLogger(RxUtil.class);
 
@@ -59,36 +64,50 @@ public final class RxUtil {
 	// .subscribe(wstream::write);
 	// return wstream.createInputStream();
 	// }
-	public static InputStream toInputStream(Flowable<Buffer> stream, Vertx vertx) throws IOException {
-		PipedInputStream pis = new PipedInputStream();
-		PipedOutputStream pos = new PipedOutputStream(pis);
-		stream.map(Buffer::getBytes).observeOn(RxHelper.blockingScheduler(vertx.getDelegate(), false)).doOnComplete(() -> {
-			try {
-				pos.close();
-			} catch (IOException e) {
-				throw new RuntimeException(e);
-			}
-		}).subscribe(buf -> {
-			try {
-				pos.write(buf);
-			} catch (IOException e) {
-				throw new RuntimeException(e);
-			}
-		}, error -> {
-			log.error("Error while reading stream", error);
+	public static Function<Flowable<Buffer>, InputStream> inputStream(Vertx vertx) throws IOException {
+		return stream -> {
+			PipedInputStream pis = new PipedInputStream();
+			PipedOutputStream pos = new PipedOutputStream(pis);
+			stream.map(b -> b.getDelegate().getBytes()).observeOn(RxHelper.blockingScheduler(vertx.getDelegate(), false)).doOnComplete(() -> {
+				try {
+					pos.close();
+				} catch (IOException e) {
+					throw new RuntimeException(e);
+				}
+			}).subscribe(buf -> {
+				try {
+					pos.write(buf);
+				} catch (IOException e) {
+					throw new RuntimeException(e);
+				}
+			}, error -> {
+				log.error("Error while reading stream", error);
+			});
+			return pis;
+		};
+	}
+
+	/**
+	 * Securely open the file and return the {@link AsyncFile} to be used.
+	 * 
+	 * @param path
+	 * @param options
+	 * @return
+	 */
+	public static Single<AsyncFile> openFile(String path, OpenOptions options) {
+		return Mesh.rxVertx().fileSystem().rxOpen(path, options).flatMap(f -> {
+			return Single.just(f).doOnDispose(f::close).doFinally(f::close);
 		});
-		return pis;
 	}
 
-	public static Flowable<Buffer> toBufferFlow(AsyncFile file) {
-		return toBufferFlow(new io.vertx.reactivex.core.file.AsyncFile(file));
+	/**
+	 * Securely open the {@link AsyncFile} for the path and register the close call.
+	 * 
+	 * @param file
+	 * @return
+	 */
+	public static Flowable<io.vertx.reactivex.core.buffer.Buffer> openFileBuffer(String path, OpenOptions options) {
+		return Mesh.rxVertx().fileSystem().rxOpen(path, options)
+			.flatMapPublisher(f -> f.toFlowable().doOnTerminate(f::close).doOnCancel(f::close));
 	}
-
-	public static Flowable<Buffer> toBufferFlow(io.vertx.reactivex.core.file.AsyncFile file) {
-		return file.toFlowable()
-			.map(io.vertx.reactivex.core.buffer.Buffer::getDelegate)
-			.doOnTerminate(file::close)
-			.doOnCancel(file::close);
-	}
-
 }

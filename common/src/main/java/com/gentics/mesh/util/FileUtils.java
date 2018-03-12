@@ -11,9 +11,9 @@ import java.security.MessageDigest;
 
 import io.reactivex.Flowable;
 import io.reactivex.Single;
-import io.vertx.core.buffer.Buffer;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import io.vertx.reactivex.core.buffer.Buffer;
 
 public final class FileUtils {
 
@@ -49,7 +49,7 @@ public final class FileUtils {
 		try {
 			MessageDigest md = MessageDigest.getInstance("SHA-512");
 			return stream.reduce(md, (digest, buffer) -> {
-				digest.update(buffer.getBytes());
+				digest.update(buffer.getDelegate().getBytes());
 				return digest;
 			}).map(digest -> digest.digest()).map(FileUtils::bytesToHex);
 		} catch (Exception e) {
