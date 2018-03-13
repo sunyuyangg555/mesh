@@ -289,9 +289,9 @@ public class BinaryFieldHandler extends AbstractHandler {
 			SearchQueueBatch batch = searchQueue.create();
 			String binaryUuid = binary.getUuid();
 
-			fbinary.setImageHeight(2222222);
-			fbinary.setImageWidth(33333);
-			field.setImageDominantColor("123455");
+//			fbinary.setImageHeight(2222222);
+//			fbinary.setImageWidth(33333);
+//			field.setImageDominantColor("123455");
 
 			// Process the upload which will update the binary field
 			return processUpload(ac, ul, binaryUuid, storeBinary).doOnSuccess(imageInfo -> {
@@ -303,9 +303,9 @@ public class BinaryFieldHandler extends AbstractHandler {
 				});
 			}).ignoreElement().andThen(Completable.fromAction(() -> {
 				db.tx(() -> {
-					fbinary.setImageHeight(2222222);
-					fbinary.setImageWidth(33333);
-					field.setImageDominantColor("123455");
+//					fbinary.setImageHeight(2222222);
+//					fbinary.setImageWidth(33333);
+//					field.setImageDominantColor("123455");
 
 					field.setFileName(ul.fileName());
 					field.getBinary().setSize(ul.size());
@@ -455,7 +455,7 @@ public class BinaryFieldHandler extends AbstractHandler {
 				parameters.validate();
 
 				// Update the binary field with the new information
-				Single<SearchQueueBatch> sqb = db.tx(() -> {
+				return db.tx(() -> {
 					SearchQueueBatch batch = searchQueue.create();
 					Release release = ac.getRelease();
 
@@ -519,9 +519,7 @@ public class BinaryFieldHandler extends AbstractHandler {
 							return store.andThen(Single.just(batch));
 						});
 					});
-				});
-				// Finally update the search index and return the updated node
-				return sqb.flatMap(b -> b.processAsync().andThen(node.transformToRest(ac, 0)));
+				}).flatMap(batch -> batch.processAsync().andThen(node.transformToRest(ac, 0)));
 			} catch (GenericRestException e) {
 				throw e;
 			} catch (Exception e) {

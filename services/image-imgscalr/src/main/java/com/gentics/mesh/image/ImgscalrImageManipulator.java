@@ -154,66 +154,77 @@ public class ImgscalrImageManipulator extends AbstractImageManipulator {
 		// Make sure to run that code in the dedicated thread pool it may be CPU intensive for larger images and we don't want to exhaust the regular worker
 		// pool
 		return workerPool.rxExecuteBlocking(bh -> {
-
-			// Read the image and apply the changes -
-			readImage(stream).flatMap(bi -> {
-				if (bi == null) {
-					throw error(BAD_REQUEST, "image_error_reading_failed");
-				}
-				if (bi.getTransparency() == Transparency.TRANSLUCENT) {
-					// NOTE: For BITMASK images, the color model is likely IndexColorModel,
-					// and this model will contain the "real" color of the transparent parts
-					// which is likely a better fit than unconditionally setting it to white.
-					// Fill background with white
-					Graphics2D graphics = bi.createGraphics();
-					try {
-						graphics.setComposite(AlphaComposite.DstOver); // Set composite rules to paint "behind"
-						graphics.setPaint(Color.WHITE);
-						graphics.fillRect(0, 0, bi.getWidth(), bi.getHeight());
-					} finally {
-						graphics.dispose();
-					}
-				}
-				// Convert the image to RGB for images with transparency (gif, png)
-				BufferedImage rgbCopy = bi;
-				if (bi.getTransparency() == Transparency.TRANSLUCENT || bi.getTransparency() == Transparency.BITMASK) {
-					rgbCopy = new BufferedImage(bi.getWidth(), bi.getHeight(), BufferedImage.TYPE_INT_RGB);
-					Graphics2D graphics = rgbCopy.createGraphics();
-					graphics.drawImage(bi, 0, 0, Color.WHITE, null);
-					graphics.dispose();
-				}
-
-				// Manipulate image
-				CropMode cropMode = parameters.getCropMode();
-				boolean omitResize = false;
-				if (cropMode != null) {
-					switch (cropMode) {
-					case RECT:
-						rgbCopy = crop(rgbCopy, parameters.getRect());
-						break;
-					case FOCALPOINT:
-						rgbCopy = focalPointModifier.apply(rgbCopy, parameters);
-						// We don't need to resize the image again. The dimensions already match up with the target dimension
-						omitResize = true;
-						break;
-					}
-				}
-
-				if (!omitResize) {
-					rgbCopy = resizeIfRequested(rgbCopy, parameters);
-				}
-
-				// Write image
-				try {
-					ImageIO.write(rgbCopy, "jpg", cacheFile);
-				} catch (Exception e) {
-					throw error(BAD_REQUEST, "image_error_writing_failed", e);
-				}
-				// Return buffer to written cache file
-				return PropReadFileStream.openFile(this.vertx, cacheFile.getAbsolutePath());
-			}).subscribe(result -> bh.complete(result), bh::fail);
+			// Read the image and apply the changes
+			readImage(stream)
+				.flatMap(bi -> applyChanges(bi, parameters, cacheFile))
+				.subscribe(result -> bh.complete(result), bh::fail);
 		});
 
+	}
+
+	/**
+	 * Apply the image manipulation on the image and return the resulting cache file.
+	 * 
+	 * @param bi
+	 * @param parameters
+	 * @param cacheFile
+	 * @return
+	 */
+	private Single<PropReadFileStream> applyChanges(BufferedImage bi, ImageManipulationParameters parameters, File cacheFile) {
+		if (bi == null) {
+			throw error(BAD_REQUEST, "image_error_reading_failed");
+		}
+		if (bi.getTransparency() == Transparency.TRANSLUCENT) {
+			// NOTE: For BITMASK images, the color model is likely IndexColorModel,
+			// and this model will contain the "real" color of the transparent parts
+			// which is likely a better fit than unconditionally setting it to white.
+			// Fill background with white
+			Graphics2D graphics = bi.createGraphics();
+			try {
+				graphics.setComposite(AlphaComposite.DstOver); // Set composite rules to paint "behind"
+				graphics.setPaint(Color.WHITE);
+				graphics.fillRect(0, 0, bi.getWidth(), bi.getHeight());
+			} finally {
+				graphics.dispose();
+			}
+		}
+		// Convert the image to RGB for images with transparency (gif, png)
+		BufferedImage rgbCopy = bi;
+		if (bi.getTransparency() == Transparency.TRANSLUCENT || bi.getTransparency() == Transparency.BITMASK) {
+			rgbCopy = new BufferedImage(bi.getWidth(), bi.getHeight(), BufferedImage.TYPE_INT_RGB);
+			Graphics2D graphics = rgbCopy.createGraphics();
+			graphics.drawImage(bi, 0, 0, Color.WHITE, null);
+			graphics.dispose();
+		}
+
+		// Manipulate image
+		CropMode cropMode = parameters.getCropMode();
+		boolean omitResize = false;
+		if (cropMode != null) {
+			switch (cropMode) {
+			case RECT:
+				rgbCopy = crop(rgbCopy, parameters.getRect());
+				break;
+			case FOCALPOINT:
+				rgbCopy = focalPointModifier.apply(rgbCopy, parameters);
+				// We don't need to resize the image again. The dimensions already match up with the target dimension
+				omitResize = true;
+				break;
+			}
+		}
+
+		if (!omitResize) {
+			rgbCopy = resizeIfRequested(rgbCopy, parameters);
+		}
+
+		// Write image
+		try {
+			ImageIO.write(rgbCopy, "jpg", cacheFile);
+		} catch (Exception e) {
+			throw error(BAD_REQUEST, "image_error_writing_failed", e);
+		}
+		// Return buffer to written cache file
+		return PropReadFileStream.openFile(this.vertx, cacheFile.getAbsolutePath());
 	}
 
 	/**
