@@ -78,9 +78,9 @@ public class VersionNumberTest {
 		VersionNumber versionA = new VersionNumber("47.11");
 		VersionNumber versionB = new VersionNumber("47.12");
 		assertTrue("VersionA should be equal to itself", versionA.equals(versionA));
-		assertTrue("VersionA should be equal to same value", versionA.equals(versionA.toString()));
+		assertTrue("VersionA should be equal to same value", versionA.toString().equals(versionA.toString()));
 		assertFalse("VersionA should not be equal to versionB", versionA.equals(versionB));
-		assertFalse("VersionA should not be equal to versionB's value", versionA.equals(versionB.toString()));
+		assertFalse("VersionA should not be equal to versionB's value", versionA.toString().equals(versionB.toString()));
 		VersionNumber versionC = new VersionNumber("47.12");
 		assertTrue("VersionB should be equal to versionC since both have the same value.", versionB.equals(versionC));
 	}

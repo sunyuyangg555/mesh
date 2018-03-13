@@ -227,7 +227,7 @@ public interface SearchQueueBatch {
 
 	/**
 	 * Add a store entry which just contains the node element information. This will effectively store all documents of the node for the given release but
-	 * include (eg. all languages, all types). Use a more restricted {@link #store(Node, String, ContainerType, boolean)} call if you know what needs to be
+	 * include (e.g. all languages, all types). Use a more restricted {@link #store(Node, String, ContainerType, boolean)} call if you know what needs to be
 	 * updated to reduce the overhead.
 	 * 
 	 * @param node
@@ -238,6 +238,15 @@ public interface SearchQueueBatch {
 		return store(node, releaseUuid, null, false);
 	}
 
+	/**
+	 * Add a store entry to the batch.
+	 * 
+	 * @param container
+	 * @param releaseUuid
+	 * @param type
+	 * @param addRelatedElements
+	 * @return Fluent API
+	 */
 	SearchQueueBatch store(NodeGraphFieldContainer container, String releaseUuid, ContainerType type, boolean addRelatedElements);
 
 	/**

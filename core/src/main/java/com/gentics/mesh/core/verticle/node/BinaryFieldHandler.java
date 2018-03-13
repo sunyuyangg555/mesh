@@ -14,7 +14,6 @@ import static org.apache.commons.lang3.StringUtils.isEmpty;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -58,16 +57,16 @@ import com.gentics.mesh.util.FileUtils;
 import com.gentics.mesh.util.RxUtil;
 
 import dagger.Lazy;
+import io.reactivex.Completable;
 import io.reactivex.Flowable;
+import io.reactivex.Maybe;
 import io.reactivex.Single;
 import io.vertx.core.MultiMap;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.web.FileUpload;
 import io.vertx.ext.web.RoutingContext;
-import io.vertx.reactivex.core.Vertx;
 import io.vertx.reactivex.core.buffer.Buffer;
-import io.vertx.reactivex.core.file.FileSystem;
 
 /**
  * Handler which contains field API specific request handlers.
@@ -286,25 +285,50 @@ public class BinaryFieldHandler extends AbstractHandler {
 				}
 			}
 
-			// Process the upload which will update the binary field
-			processUpload(ac, ul, field, storeBinary);
-
-			// Now get rid of the old field
-			if (oldField != null) {
-				if (log.isDebugEnabled()) {
-					log.debug("Removing old field {" + oldField.getUuid() + "}");
-				}
-				oldField.removeField(newDraftVersion);
-			}
-			// If the binary field is the segment field, we need to update the webroot info in the node
-			if (field.getFieldKey().equals(newDraftVersion.getSchemaContainerVersion().getSchema().getSegmentField())) {
-				if (log.isDebugEnabled()) {
-					log.debug("Updating webroot path for draft container {" + newDraftVersion.getUuid() + "}");
-				}
-				newDraftVersion.updateWebrootPathInfo(release.getUuid(), "node_conflicting_segmentfield_upload");
-			}
+			Binary fbinary = binary;
 			SearchQueueBatch batch = searchQueue.create();
-			return batch.store(node, release.getUuid(), DRAFT, false).processAsync().andThen(node.transformToRest(ac, 0));
+			String binaryUuid = binary.getUuid();
+
+			fbinary.setImageHeight(2222222);
+			fbinary.setImageWidth(33333);
+			field.setImageDominantColor("123455");
+
+			// Process the upload which will update the binary field
+			return processUpload(ac, ul, binaryUuid, storeBinary).doOnSuccess(imageInfo -> {
+				db.tx(() -> {
+					// Only add image information if image properties were found
+					// fbinary.setImageHeight(imageInfo.getHeight());
+					// fbinary.setImageWidth(imageInfo.getWidth());
+					// field.setImageDominantColor(imageInfo.getDominantColor());
+				});
+			}).ignoreElement().andThen(Completable.fromAction(() -> {
+				db.tx(() -> {
+					fbinary.setImageHeight(2222222);
+					fbinary.setImageWidth(33333);
+					field.setImageDominantColor("123455");
+
+					field.setFileName(ul.fileName());
+					field.getBinary().setSize(ul.size());
+					field.setMimeType(ul.contentType());
+
+					// Now get rid of the old field
+					if (oldField != null) {
+						if (log.isDebugEnabled()) {
+							log.debug("Removing old field {" + oldField.getUuid() + "}");
+						}
+						oldField.removeField(newDraftVersion);
+					}
+					// If the binary field is the segment field, we need to update the webroot info in the node
+					if (field.getFieldKey().equals(newDraftVersion.getSchemaContainerVersion().getSchema().getSegmentField())) {
+						if (log.isDebugEnabled()) {
+							log.debug("Updating webroot path for draft container {" + newDraftVersion.getUuid() + "}");
+						}
+						newDraftVersion.updateWebrootPathInfo(release.getUuid(), "node_conflicting_segmentfield_upload");
+					}
+				});
+			}).andThen(batch.store(node, release.getUuid(), DRAFT, false)
+				.processAsync()
+				.andThen(node.transformToRest(ac, 0))));
 		}).subscribe(model -> ac.send(model, CREATED), ac::fail);
 	}
 
@@ -315,45 +339,29 @@ public class BinaryFieldHandler extends AbstractHandler {
 	 * @param ac
 	 * @param ul
 	 *            Upload to process
-	 * @param field
-	 *            Field which will be updated with the extracted information
+	 * @param binaryUuid
+	 *            Binary field uuid to be used to store the upload
 	 * @param storeBinary
 	 *            Whether to store the data in the binary store
+	 * @return Completable which will complete once the upload has been stored and the binary field has been updated.
 	 */
-	private void processUpload(ActionContext ac, FileUpload ul, BinaryGraphField field, boolean storeBinary) {
+	private Maybe<ImageInfo> processUpload(ActionContext ac, FileUpload ul, String binaryUuid, boolean storeBinary) {
 		String uploadFile = ul.uploadedFileName();
 
-		Binary binary = field.getBinary();
-		String binaryUuid = binary.getUuid();
-		String contentType = ul.contentType();
-		boolean isImage = contentType.startsWith("image/");
-
 		// Only gather image info for actual images. Otherwise return an empty image info object.
-		Single<Optional<ImageInfo>> imageInfoSingle = Single.just(Optional.empty());
-		if (isImage) {
-			imageInfoSingle = processImageInfo(ac, uploadFile);
-		}
-		ImageInfo imageInfo = imageInfoSingle.blockingGet().orElse(null);
+		Maybe<ImageInfo> imageInfo = processImageInfo(ac, ul, uploadFile);
 
 		// Store the data
 		Single<Long> store = Single.just(ul.size());
 		if (storeBinary) {
 			Flowable<Buffer> stream = RxUtil.openFileBuffer(uploadFile, READ_ONLY);
-			store = binaryStorage.store(stream, binaryUuid).andThen(Single.just(ul.size()));
-		}
-		long size = store.blockingGet();
-		log.debug("Stored {" + size + "} bytes in binary storage for binary {" + binaryUuid + "}");
-
-		// Only add image information if image properties were found
-		if (imageInfo != null) {
-			binary.setImageHeight(imageInfo.getHeight());
-			binary.setImageWidth(imageInfo.getWidth());
-			field.setImageDominantColor(imageInfo.getDominantColor());
+			store = binaryStorage.store(stream, binaryUuid)
+				.andThen(Single.just(ul.size()))
+				.doOnSuccess(size -> log.debug("Stored {" + size + "} bytes in binary storage for binary {" + binaryUuid + "}"));
 		}
 
-		field.setFileName(ul.fileName());
-		field.getBinary().setSize(ul.size());
-		field.setMimeType(contentType);
+		// return store.com.toCompletable().andThen(imageInfo);
+		return imageInfo.delay(store.toFlowable());
 	}
 
 	/**
@@ -361,22 +369,26 @@ public class BinaryFieldHandler extends AbstractHandler {
 	 * tx retry). In that case the previously loaded image info is returned.
 	 * 
 	 * @param ac
+	 * @param ul
 	 * @param file
 	 * @return
 	 */
-	private Single<Optional<ImageInfo>> processImageInfo(ActionContext ac, String file) {
+	private Maybe<ImageInfo> processImageInfo(ActionContext ac, FileUpload ul, String file) {
+		String contentType = ul.contentType();
+		boolean isImage = contentType.startsWith("image/");
+		if (!isImage) {
+			return Maybe.empty();
+		}
 		// Caches the image info in the action context so that it does not need to be
 		// calculated again if the transaction failed
 		ImageInfo imageInfo = ac.get("imageInfo");
 		if (imageInfo != null) {
-			return Single.just(Optional.of(imageInfo));
+			return Maybe.just(imageInfo);
 		} else {
 			return imageManipulator.readImageInfo(file).doOnSuccess(ii -> {
 				ac.put("imageInfo", ii);
-			}).map(Optional::of).onErrorReturn(e -> {
-				// suppress error
-				return Optional.empty();
-			});
+			}).toMaybe()
+				.onErrorComplete();
 		}
 	}
 
@@ -398,7 +410,6 @@ public class BinaryFieldHandler extends AbstractHandler {
 			throw error(BAD_REQUEST, "image_error_language_not_set");
 		}
 
-		FileSystem fs = new Vertx(vertx).fileSystem();
 		db.asyncTx(() -> {
 			// Load needed elements
 			Project project = ac.getProject();
@@ -444,16 +455,13 @@ public class BinaryFieldHandler extends AbstractHandler {
 				parameters.validate();
 
 				// Update the binary field with the new information
-				SearchQueueBatch sqb = db.tx(() -> {
+				Single<SearchQueueBatch> sqb = db.tx(() -> {
 					SearchQueueBatch batch = searchQueue.create();
 					Release release = ac.getRelease();
 
 					// Create a new node version field container to store the upload
 					NodeGraphFieldContainer newDraftVersion = node.createGraphFieldContainer(language, release, ac.getUser(), latestDraftVersion,
 						true);
-
-					String binaryUuid = initialField.getBinary().getUuid();
-					Flowable<Buffer> stream = binaryStorage.read(binaryUuid);
 
 					// Use the focal point which is stored along with the binary field if no custom point was included in the query parameters.
 					// Otherwise the query parameter focal point will be used and thus override the stored focal point.
@@ -463,56 +471,57 @@ public class BinaryFieldHandler extends AbstractHandler {
 					}
 
 					// Resize the original image and store the result in the filesystem
-					Single<TransformationResult> obsTransformation = imageManipulator.handleResize(stream, binaryUuid, parameters).flatMap(props -> {
-						Flowable<Buffer> obs = props.getFile().toFlowable();
+					String binaryUuid = initialField.getBinary().getUuid();
+					Flowable<Buffer> stream = binaryStorage.read(binaryUuid);
+					return imageManipulator.handleResize(stream, binaryUuid, parameters).flatMap(props -> {
 
 						// Hash the resized image data and store it using the computed fieldUuid + hash
-						Single<String> hash = FileUtils.hash(obs);
+						Single<String> hash = FileUtils.hash(RxUtil.openFileBuffer(props.getPath(), READ_ONLY));
 
 						// The image was stored and hashed. Now we need to load the stored file again and check the image properties
 						Single<ImageInfo> info = imageManipulator.readImageInfo(props.getPath());
 
 						return Single.zip(hash, info, (hashV, infoV) -> {
 							// Return a POJO which hold all information that is needed to update the field
-							TransformationResult result = new TransformationResult(hashV, props.getProps().size(), infoV, props.getPath());
-							return Single.just(result);
+							return Single.just(new TransformationResult(hashV, props.getProps().size(), infoV, props.getPath()));
 						}).flatMap(e -> e);
+					}).flatMap(result -> {
+						return db.tx(() -> {
+							// Now that the binary data has been resized and inspected we can use this information to create a new binary and store it.
+							String hash = result.getHash();
+							BinaryRoot binaryRoot = boot.get().meshRoot().getBinaryRoot();
+							Binary binary = binaryRoot.findByHash(hash);
+
+							Completable store = Completable.complete();
+							// Check whether the binary was already stored.
+							if (binary == null) {
+								// Open the file again since we already read from it. We need to read it again in order to store it in the binary storage.
+								binary = binaryRoot.create(hash, result.getSize());
+								Flowable<Buffer> data = RxUtil.openFileBuffer(result.getFilePath(), READ_ONLY);
+								store = binaryStorage.store(data, binary.getUuid());
+							} else {
+								log.debug("Data of resized image with hash {" + hash + "} has already been stored. Skipping store.");
+							}
+							// Now create the binary field in which we store the information about the file
+							BinaryGraphField oldField = newDraftVersion.getBinary(fieldName);
+							BinaryGraphField field = newDraftVersion.createBinary(fieldName, binary);
+							if (oldField != null) {
+								oldField.copyTo(field);
+								oldField.remove();
+							}
+							field.getBinary().setSize(result.getSize());
+							// The resized image will always be a JPEG
+							field.setMimeType("image/jpeg");
+							// TODO should we rename the image, if the extension is wrong?
+							field.getBinary().setImageHeight(result.getImageInfo().getHeight());
+							field.getBinary().setImageWidth(result.getImageInfo().getWidth());
+							batch.store(newDraftVersion, node.getProject().getReleaseRoot().getLatestRelease().getUuid(), DRAFT, false);
+							return store.andThen(Single.just(batch));
+						});
 					});
-
-					// Now that the binary data has been resized and inspected we can use this information to create a new binary and store it.
-					TransformationResult result = obsTransformation.blockingGet();
-					String hash = result.getHash();
-					BinaryRoot binaryRoot = boot.get().meshRoot().getBinaryRoot();
-					Binary binary = binaryRoot.findByHash(hash);
-
-					// Check whether the binary was already stored.
-					if (binary == null) {
-						// Open the file again since we already read from it. We need to read it again in order to store it in the binary storage.
-						Flowable<Buffer> data = RxUtil.openFileBuffer(result.getFilePath(), READ_ONLY);
-						binary = binaryRoot.create(hash, result.getSize());
-						binaryStorage.store(data, binary.getUuid()).andThen(Single.just(result)).toCompletable().blockingAwait();
-					} else {
-						log.debug("Data of resized image with hash {" + hash + "} has already been stored. Skipping store.");
-					}
-
-					// Now create the binary field in which we store the information about the file
-					BinaryGraphField oldField = newDraftVersion.getBinary(fieldName);
-					BinaryGraphField field = newDraftVersion.createBinary(fieldName, binary);
-					if (oldField != null) {
-						oldField.copyTo(field);
-						oldField.remove();
-					}
-					field.getBinary().setSize(result.getSize());
-					// The resized image will always be a JPEG
-					field.setMimeType("image/jpeg");
-					// TODO should we rename the image, if the extension is wrong?
-					field.getBinary().setImageHeight(result.getImageInfo().getHeight());
-					field.getBinary().setImageWidth(result.getImageInfo().getWidth());
-					batch.store(newDraftVersion, node.getProject().getReleaseRoot().getLatestRelease().getUuid(), DRAFT, false);
-					return batch;
 				});
 				// Finally update the search index and return the updated node
-				return sqb.processAsync().andThen(node.transformToRest(ac, 0));
+				return sqb.flatMap(b -> b.processAsync().andThen(node.transformToRest(ac, 0)));
 			} catch (GenericRestException e) {
 				throw e;
 			} catch (Exception e) {

@@ -25,6 +25,7 @@ import com.gentics.mesh.etc.config.MeshOptions;
 import com.gentics.mesh.graphdb.spi.Database;
 import com.gentics.mesh.impl.MeshFactoryImpl;
 import com.gentics.mesh.rest.client.MeshRestClient;
+import com.gentics.mesh.rest.client.impl.MeshRestHttpClientImpl;
 import com.gentics.mesh.router.RouterStorage;
 import com.gentics.mesh.search.TrackingSearchProvider;
 import com.gentics.mesh.test.TestDataProvider;
@@ -34,6 +35,7 @@ import com.gentics.mesh.util.UUIDUtil;
 import com.syncleus.ferma.tx.Tx;
 
 import io.vertx.core.Vertx;
+import io.vertx.core.http.HttpClientOptions;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
@@ -152,7 +154,8 @@ public class MeshTestContext extends TestWatcher {
 
 		// Setup the rest client
 		try (Tx tx = db().tx()) {
-			client = MeshRestClient.create("localhost", port, false, Mesh.vertx());
+			client = new MeshRestHttpClientImpl(new HttpClientOptions().setDefaultHost("localhost").setDefaultPort(port).setKeepAlive(false),
+				Mesh.vertx());
 			client.setLogin(getData().user().getUsername(), getData().getUserInfo().getPassword());
 			client.login().blockingGet();
 		}

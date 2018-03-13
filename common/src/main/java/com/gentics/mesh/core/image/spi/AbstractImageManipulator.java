@@ -57,7 +57,7 @@ public abstract class AbstractImageManipulator implements ImageManipulator {
 	public Single<ImageInfo> readImageInfo(String file) {
 		return vertx.rxExecuteBlocking(bh -> {
 			if (log.isDebugEnabled()) {
-				log.debug("Reading image information from stream");
+				log.debug("Reading image information from file {" + file + "}");
 			}
 			try {
 				BufferedImage image = ImageIO.read(new File(file));

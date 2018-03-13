@@ -158,6 +158,10 @@ public class BinaryFieldUploadEndpointTest extends AbstractMeshTest {
 		}
 	}
 
+	/**
+	 * Test uploading three images to the same node. All the properties of the binary should be set correctly.
+	 * @throws IOException
+	 */
 	@Test
 	public void testParallelImageUpload() throws IOException {
 		String fileName = "blume.jpg";
@@ -181,11 +185,12 @@ public class BinaryFieldUploadEndpointTest extends AbstractMeshTest {
 
 		Map<String, Buffer> data = new HashMap<>();
 		for (String field : fields) {
-			InputStream ins = getClass().getResourceAsStream("/pictures/" + field + ".jpg");
-			assertNotNull("The image for field {" + field + "} could not be found", ins);
-			byte[] bytes = IOUtils.toByteArray(ins);
-			Buffer buffer = Buffer.buffer(bytes);
-			data.put(field, buffer);
+			try (InputStream ins = getClass().getResourceAsStream("/pictures/" + field + ".jpg")) {
+				assertNotNull("The image for field {" + field + "} could not be found", ins);
+				byte[] bytes = IOUtils.toByteArray(ins);
+				Buffer buffer = Buffer.buffer(bytes);
+				data.put(field, buffer);
+			}
 		}
 
 		Observable.fromIterable(fields).flatMapSingle(fieldName -> {
@@ -246,7 +251,7 @@ public class BinaryFieldUploadEndpointTest extends AbstractMeshTest {
 			tx.success();
 		}
 
-		Observable.range(1, 10_000).flatMapSingle(i -> {
+		Observable.range(0, 1_000).flatMapSingle(i -> {
 			String fileName = "somefile" + i + ".dat";
 			NodeCreateRequest nodeCreateRequest = new NodeCreateRequest();
 			nodeCreateRequest.setSchemaName(schemaName);
@@ -255,7 +260,7 @@ public class BinaryFieldUploadEndpointTest extends AbstractMeshTest {
 
 			System.out.println("Creating file " + i);
 			return client().createNode(PROJECT_NAME, nodeCreateRequest).toSingle().flatMap(response -> {
-				Buffer buffer = TestUtils.randomBuffer(2000+i);
+				Buffer buffer = TestUtils.randomBuffer(2000 + i);
 				return client().updateNodeBinaryField(PROJECT_NAME, response.getUuid(), "en", response.getVersion(), "image", buffer, fileName,
 					contentType).toSingle();
 			});

@@ -22,7 +22,6 @@ import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.reactivex.core.buffer.Buffer;
-import io.vertx.reactivex.core.file.AsyncFile;
 
 /**
  * Handler which will accept {@link BinaryGraphField} elements and return the binary data using the given context.
@@ -76,15 +75,15 @@ public class BinaryFieldResponseHandler {
 				Flowable<Buffer> data = binary.getStream();
 				Flowable<Buffer> resizedData = imageManipulator.handleResize(data, sha512sum, ac.getImageParameters())
 					.toFlowable()
-					.map(fileWithProps -> {
+					.flatMap(fileWithProps -> {
 						response.putHeader(HttpHeaders.CONTENT_LENGTH, String.valueOf(fileWithProps.getProps().size()));
 						response.putHeader(HttpHeaders.CONTENT_TYPE, "image/jpeg");
 						response.putHeader(HttpHeaders.CACHE_CONTROL, "must-revalidate");
 						response.putHeader(MeshHeaders.WEBROOT_RESPONSE_TYPE, "binary");
 						// TODO encode filename?
 						response.putHeader("content-disposition", "inline; filename=" + fileName);
-						return fileWithProps.getFile();
-					}).flatMap(AsyncFile::toFlowable);
+						return fileWithProps.openFile();
+					});
 				resizedData.subscribe(b -> response.write(b.getDelegate()), rc::fail, response::end);
 			} else {
 				response.putHeader(HttpHeaders.CONTENT_LENGTH, contentLength);

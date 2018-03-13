@@ -63,7 +63,7 @@ public class ImgscalrImageManipulatorTest extends AbstractImageTest {
 			log.debug("Handling " + imageName);
 
 			Single<Buffer> obs = manipulator.handleResize(bs, imageName, new ImageManipulationParametersImpl().setWidth(150).setHeight(180)).map(
-				PropReadFileStream::getFile).map(AsyncFile::toFlowable).flatMap(RxUtil::readEntireData);
+				PropReadFileStream::openFile).flatMap(RxUtil::readEntireData);
 			CountDownLatch latch = new CountDownLatch(1);
 			obs.subscribe(buffer -> {
 				try {
