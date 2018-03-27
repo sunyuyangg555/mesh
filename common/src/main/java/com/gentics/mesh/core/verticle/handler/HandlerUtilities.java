@@ -38,6 +38,7 @@ import com.syncleus.ferma.tx.TxAction1;
 import com.syncleus.ferma.tx.TxAction2;
 
 import io.vertx.core.AsyncResult;
+import io.vertx.core.http.HttpMethod;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
@@ -209,9 +210,19 @@ public class HandlerUtilities {
 			if (ac.matches(etag, true)) {
 				throw new NotModifiedException();
 			} else {
-				return element.transformToRestSync(ac, 0);
+				if (HttpMethod.HEAD.equals(ac.method())) {
+					return null;
+				} else {
+					return element.transformToRestSync(ac, 0);
+				}
 			}
-		}, (model) -> ac.send(model, OK));
+		}, (model) -> {
+			if (model != null) {
+				ac.send(model, OK);
+			} else {
+				ac.send(OK);
+			}
+		});
 
 	}
 

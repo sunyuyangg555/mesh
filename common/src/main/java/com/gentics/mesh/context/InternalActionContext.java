@@ -13,6 +13,7 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.core.MultiMap;
+import io.vertx.core.http.HttpMethod;
 import io.vertx.ext.web.Cookie;
 import io.vertx.ext.web.FileUpload;
 
@@ -97,6 +98,13 @@ public interface InternalActionContext extends ActionContext, ParameterProviderC
 	 * @return
 	 */
 	MultiMap requestHeaders();
+
+	/**
+	 * Return the request http method.
+	 * 
+	 * @return
+	 */
+	HttpMethod method();
 
 	/**
 	 * Adds a cookie to the response.

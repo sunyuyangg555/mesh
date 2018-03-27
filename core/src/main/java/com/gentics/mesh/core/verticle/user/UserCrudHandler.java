@@ -142,7 +142,7 @@ public class UserCrudHandler extends AbstractCrudHandler<User, UserResponse> {
 
 			// 2. Generate the api key for the user
 			UserAPITokenResponse apiKeyRespose = db.tx(() -> {
-				String tokenId = TokenUtil.randomToken(); 
+				String tokenId = TokenUtil.randomToken();
 				String apiToken = authProvider.generateAPIToken(user, tokenId);
 				UserAPITokenResponse response = new UserAPITokenResponse();
 				response.setPreviousIssueDate(user.getAPITokenIssueDate());

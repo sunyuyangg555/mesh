@@ -20,6 +20,7 @@ import com.gentics.mesh.util.ETag;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.vertx.core.MultiMap;
 import io.vertx.core.http.HttpHeaders;
+import io.vertx.core.http.HttpMethod;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.web.Cookie;
@@ -66,6 +67,11 @@ public class InternalRoutingActionContextImpl extends AbstractInternalActionCont
 	@Override
 	public MultiMap getParameters() {
 		return rc.request().params();
+	}
+
+	@Override
+	public HttpMethod method() {
+		return rc.request().method();
 	}
 
 	@Override

@@ -122,11 +122,13 @@ public class UserEndpoint extends AbstractEndpoint {
 	}
 
 	private void addReadHandler() {
+
+
 		EndpointRoute readOne = createEndpoint();
 		readOne.path("/:userUuid");
 		readOne.description("Read the user with the given uuid");
 		readOne.addUriParameter("userUuid", "Uuid of the user.", UUIDUtil.randomUUID());
-		readOne.method(GET);
+		readOne.method(GET, HEAD);
 		readOne.produces(APPLICATION_JSON);
 		readOne.exampleResponse(OK, userExamples.getUserResponse1("jdoe"), "User response which may also contain an expanded node.");
 		readOne.addQueryParameters(NodeParametersImpl.class);
