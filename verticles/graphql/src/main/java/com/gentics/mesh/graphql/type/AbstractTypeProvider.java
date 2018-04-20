@@ -34,6 +34,7 @@ import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -390,6 +391,17 @@ public abstract class AbstractTypeProvider {
 			return new DynamicStreamPageImpl<>(stream, pagingInfo, NodeFilter.filter(gc).createPredicate(filterArgument));
 		} else {
 			return new DynamicStreamPageImpl<>(stream, pagingInfo);
+		}
+	}
+
+	protected Predicate<NodeContent> getNodeFilter(DataFetchingEnvironment env) {
+		Map<String, ?> filterArgument = env.getArgument("filter");
+		GraphQLContext gc = env.getContext();
+
+		if (filterArgument != null) {
+			return NodeFilter.filter(gc).createPredicate(filterArgument);
+		} else {
+			return ignore -> true;
 		}
 	}
 }

@@ -280,9 +280,8 @@ public class QueryTypeProvider extends AbstractTypeProvider {
 				List<String> languageTags = getLanguageArgument(env);
 				// Check whether we need to load the nodes via a query or regular project-wide paging
 				if (query != null) {
-					// TODO add filtering for query nodes
 					gc.getNodeParameters().setLanguages(languageTags.stream().toArray(String[]::new));
-					return nodeTypeProvider.handleContentSearch(gc, query, pagingInfo);
+					return nodeTypeProvider.handleContentSearch(gc, query, pagingInfo, getNodeFilter(env));
 				} else {
 					return fetchFilteredNodes(env);
 				}

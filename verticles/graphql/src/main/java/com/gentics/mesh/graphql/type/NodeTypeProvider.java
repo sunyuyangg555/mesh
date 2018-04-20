@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Stack;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -440,12 +441,8 @@ public class NodeTypeProvider extends AbstractTypeProvider {
 	 * @param pagingInfo
 	 * @return
 	 */
-	public Page<? extends NodeContent> handleContentSearch(GraphQLContext gc, String query, PagingParameters pagingInfo) {
-		try {
-			return nodeSearchHandler.handleContainerSearch(gc, query, pagingInfo, READ_PERM, READ_PUBLISHED_PERM);
-		} catch (MeshConfigurationException | InterruptedException | ExecutionException | TimeoutException e) {
-			throw new RuntimeException(e);
-		}
+	public Page<? extends NodeContent> handleContentSearch(GraphQLContext gc, String query, PagingParameters pagingInfo, Predicate<NodeContent> filter) {
+		return nodeSearchHandler.handleContainerSearch(gc, query, pagingInfo, filter);
 	}
 
 	/**

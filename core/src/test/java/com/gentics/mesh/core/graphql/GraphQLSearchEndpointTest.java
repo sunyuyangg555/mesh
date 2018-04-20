@@ -22,6 +22,7 @@ public class GraphQLSearchEndpointTest extends AbstractGraphQLSearchEndpointTest
 		testQueries.add("node-elasticsearch-query");
 		testQueries.add("tag-elasticsearch-query");
 		testQueries.add("tagFamily-elasticsearch-query");
+		testQueries.add("filtering/nodes-elasticsearch");
 		return testQueries;
 	}
 

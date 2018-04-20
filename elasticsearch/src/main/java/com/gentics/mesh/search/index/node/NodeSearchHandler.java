@@ -5,13 +5,18 @@ import static com.gentics.mesh.search.impl.ElasticsearchErrorHelper.mapToMeshErr
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
+import com.gentics.mesh.core.data.page.impl.DynamicStreamPageImpl;
 import org.apache.commons.lang3.StringUtils;
 
 import com.gentics.elasticsearch.client.HttpErrorException;
@@ -72,8 +77,7 @@ public class NodeSearchHandler extends AbstractSearchHandler<Node, NodeResponse>
 	 * @throws ExecutionException
 	 * @throws InterruptedException
 	 */
-	public Page<? extends NodeContent> handleContainerSearch(InternalActionContext ac, String query, PagingParameters pagingInfo,
-		GraphPermission... permissions) throws MeshConfigurationException, InterruptedException, ExecutionException, TimeoutException {
+	public Page<NodeContent> handleContainerSearch(InternalActionContext ac, String query, PagingParameters pagingInfo, Predicate<NodeContent> filter) {
 		SearchClient client = searchProvider.getClient();
 		if (log.isDebugEnabled()) {
 			log.debug("Invoking search with query {" + query + "} for {Containers}");
@@ -84,7 +88,8 @@ public class NodeSearchHandler extends AbstractSearchHandler<Node, NodeResponse>
 		JsonObject queryJson = prepareSearchQuery(ac, query, true);
 
 		// Apply paging
-		applyPagingParams(queryJson, pagingInfo);
+		// TODO use scroll api
+		queryJson.put("size", 1000);
 
 		// Only load the documentId we don't care about the indexed contents. The graph is our source of truth here.
 		queryJson.put("_source", false);
@@ -98,72 +103,98 @@ public class NodeSearchHandler extends AbstractSearchHandler<Node, NodeResponse>
 		queryOption.put("search_type", "dfs_query_then_fetch");
 		log.debug("Using options {" + queryOption.encodePrettily() + "}");
 
+		JsonObject response;
 		try {
 			RequestBuilder<JsonObject> searchRequest = client.multiSearch(queryOption, queryJson);
-			JsonObject response = searchRequest.sync();
-			JsonArray responses = response.getJsonArray("responses");
-			JsonObject firstResponse = responses.getJsonObject(0);
-
-			// Process the nested error
-			JsonObject errorInfo = firstResponse.getJsonObject("error");
-			if (errorInfo != null) {
-				throw mapError(errorInfo);
-			}
-
-			JsonObject hitsInfo = firstResponse.getJsonObject("hits");
-
-			// The scrolling iterator will wrap the current response and query ES for more data if needed.
-			Page<? extends NodeContent> page = db.tx(() -> {
-				long totalCount = hitsInfo.getLong("total");
-				List<NodeContent> elementList = new ArrayList<>();
-				JsonArray hits = hitsInfo.getJsonArray("hits");
-				for (int i = 0; i < hits.size(); i++) {
-					JsonObject hit = hits.getJsonObject(i);
-
-					String id = hit.getString("_id");
-					int pos = id.indexOf("-");
-
-					String language = pos > 0 ? id.substring(pos + 1) : null;
-					String uuid = pos > 0 ? id.substring(0, pos) : id;
-
-					RootVertex<Node> root = getIndexHandler().getRootVertex();
-					Node element = root.findByUuid(uuid);
-					if (element == null) {
-						log.warn("Object could not be found for uuid {" + uuid + "} in root vertex {" + root.getRootLabel() + "}");
-						totalCount--;
-						continue;
-					}
-
-					ContainerType type = ContainerType.forVersion(ac.getVersioningParameters().getVersion());
-					Language languageTag = boot.languageRoot().findByLanguageTag(language);
-					if (languageTag == null) {
-						log.warn("Could not find language {" + language + "}");
-						totalCount--;
-						continue;
-					}
-
-					// Locate the matching container and add it to the list of found containers
-					NodeGraphFieldContainer container = element.getGraphFieldContainer(languageTag, ac.getRelease(), type);
-					if (container != null) {
-						elementList.add(new NodeContent(element, container));
-					} else {
-						totalCount--;
-						continue;
-					}
-
-				}
-				// Update the total count
-				hitsInfo.put("total", totalCount);
-
-				PagingMetaInfo info = extractMetaInfo(hitsInfo, pagingInfo);
-				return new PageImpl<>(elementList, info.getTotalCount(), pagingInfo.getPage(), info.getPageCount(), pagingInfo.getPerPage());
-			});
-			return page;
+			response = searchRequest.sync();
 		} catch (HttpErrorException e) {
 			log.error("Error while processing query", e);
 			throw mapToMeshError(e);
 		}
 
+		JsonArray responses = response.getJsonArray("responses");
+		JsonObject firstResponse = responses.getJsonObject(0);
+
+		// Process the nested error
+		JsonObject errorInfo = firstResponse.getJsonObject("error");
+		if (errorInfo != null) {
+			throw mapError(errorInfo);
+		}
+
+		HitsInfo hitsInfo = new HitsInfo(firstResponse.getJsonObject("hits"));
+
+		Page<NodeContent> page = db.tx(() -> {
+			RootVertex<Node> root = getIndexHandler().getRootVertex();
+			ContainerType type = ContainerType.forVersion(ac.getVersioningParameters().getVersion());
+			Stream<NodeContent> hits = hitsInfo.streamHits()
+				.map(hit -> hit.toNodeContent(root, type, ac))
+				.flatMap(this::toStream);
+
+			return new DynamicStreamPageImpl<>(hits, pagingInfo, filter);
+		});
+		return page;
+
 	}
 
+	private <T> Stream<T> toStream(Optional<T> opt) {
+		return opt.map(Stream::of).orElseGet(Stream::empty);
+	}
+
+	private class HitsInfo {
+		private final JsonObject info;
+
+		public HitsInfo(JsonObject info) {
+			this.info = info;
+		}
+
+		public Stream<Hit> streamHits() {
+			return info.getJsonArray("hits").stream()
+				.map(hit -> new Hit((JsonObject)hit));
+		}
+	}
+
+	private class Hit {
+		private final String language;
+		private final String uuid;
+
+		public Hit(String ESid) {
+			int pos = ESid.indexOf("-");
+			language = pos > 0 ? ESid.substring(pos + 1) : null;
+			uuid = pos > 0 ? ESid.substring(0, pos) : ESid;
+		}
+
+		public Hit(JsonObject hit) {
+			this(hit.getString("_id"));
+		}
+
+		public String getLanguage() {
+			return language;
+		}
+
+		public String getUuid() {
+			return uuid;
+		}
+
+		public Optional<NodeContent> toNodeContent(RootVertex<Node> root, ContainerType type, InternalActionContext ac) {
+			Node element = root.findByUuid(uuid);
+			if (element == null) {
+				log.warn("Object could not be found for uuid {" + uuid + "} in root vertex {" + root.getRootLabel() + "}");
+				return Optional.empty();
+			}
+
+			Language languageTag = boot.languageRoot().findByLanguageTag(language);
+			if (languageTag == null) {
+				log.warn("Could not find language {" + language + "}");
+				return Optional.empty();
+			}
+
+			// Locate the matching container and add it to the list of found containers
+			NodeGraphFieldContainer container = element.getGraphFieldContainer(languageTag, ac.getRelease(), type);
+			if (container != null) {
+				return Optional.of(new NodeContent(element, container));
+			} else {
+				return Optional.empty();
+			}
+		}
+	}
 }

@@ -281,7 +281,6 @@ public abstract class AbstractSearchHandler<T extends MeshCoreVertex<RM, T>, RM 
 	 * Add the paging parameters to the request.
 	 * 
 	 * @param request
-	 * @param pagingInfo
 	 */
 	protected void applyPagingParams(JsonObject request, PagingParameters pagingInfo) {
 		int page = pagingInfo.getPage() - 1;

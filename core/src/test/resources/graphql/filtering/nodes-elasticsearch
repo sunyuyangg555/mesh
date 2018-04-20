@@ -1,5 +1,5 @@
 {
-  nodes(filter: {
+  nodes(query: "{\"query\":{\"match_all\":{}}}", filter: {
     schema: {is: folder}
     fields: {
       folder: {
