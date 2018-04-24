@@ -24,12 +24,14 @@ import graphql.schema.GraphQLList;
 import graphql.schema.GraphQLObjectType;
 import graphql.schema.GraphQLObjectType.Builder;
 import graphql.schema.GraphQLTypeReference;
+import io.reactivex.Single;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Stack;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Predicate;
@@ -441,8 +443,19 @@ public class NodeTypeProvider extends AbstractTypeProvider {
 	 * @param pagingInfo
 	 * @return
 	 */
-	public Page<? extends NodeContent> handleContentSearch(GraphQLContext gc, String query, PagingParameters pagingInfo, Predicate<NodeContent> filter) {
-		return nodeSearchHandler.handleContainerSearch(gc, query, pagingInfo, filter);
+	public CompletableFuture<Page<NodeContent>> handleContentSearch(GraphQLContext gc, String query, PagingParameters pagingInfo, Predicate<NodeContent> filter) {
+		return nodeSearchHandler.handleContainerSearch(gc, query, pagingInfo, filter).to(NodeTypeProvider::completableFuture);
+	}
+
+	/**
+	 * Converts a single to a CompletableFuture. To be used with Single.to(...)
+	 * This is used to return async results back to the GraphQL-Java library.
+	 * Calling this function subscribes to the source single.
+	 */
+	private static <T> CompletableFuture<T> completableFuture(Single<T> source) {
+		CompletableFuture<T> future = new CompletableFuture<>();
+		source.subscribe(future::complete, future::completeExceptionally);
+		return future;
 	}
 
 	/**

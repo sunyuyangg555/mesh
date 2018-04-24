@@ -1,24 +1,5 @@
 package com.gentics.mesh.search.index.node;
 
-import static com.gentics.mesh.search.impl.ElasticsearchErrorHelper.mapError;
-import static com.gentics.mesh.search.impl.ElasticsearchErrorHelper.mapToMeshError;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeoutException;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
-import javax.inject.Inject;
-import javax.inject.Singleton;
-
-import com.gentics.mesh.core.data.page.impl.DynamicStreamPageImpl;
-import org.apache.commons.lang3.StringUtils;
-
 import com.gentics.elasticsearch.client.HttpErrorException;
 import com.gentics.elasticsearch.client.okhttp.RequestBuilder;
 import com.gentics.mesh.cli.BootstrapInitializer;
@@ -29,10 +10,8 @@ import com.gentics.mesh.core.data.NodeGraphFieldContainer;
 import com.gentics.mesh.core.data.node.Node;
 import com.gentics.mesh.core.data.node.NodeContent;
 import com.gentics.mesh.core.data.page.Page;
-import com.gentics.mesh.core.data.page.impl.PageImpl;
-import com.gentics.mesh.core.data.relationship.GraphPermission;
+import com.gentics.mesh.core.data.page.impl.DynamicStreamPageImpl;
 import com.gentics.mesh.core.data.root.RootVertex;
-import com.gentics.mesh.core.rest.common.PagingMetaInfo;
 import com.gentics.mesh.core.rest.node.NodeResponse;
 import com.gentics.mesh.core.verticle.handler.HandlerUtilities;
 import com.gentics.mesh.error.MeshConfigurationException;
@@ -41,11 +20,27 @@ import com.gentics.mesh.parameter.PagingParameters;
 import com.gentics.mesh.search.SearchProvider;
 import com.gentics.mesh.search.impl.SearchClient;
 import com.gentics.mesh.search.index.AbstractSearchHandler;
-
+import io.reactivex.Flowable;
+import io.reactivex.Maybe;
+import io.reactivex.Single;
+import io.reactivex.functions.Function;
+import io.reactivex.functions.Predicate;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import org.apache.commons.lang3.StringUtils;
+
+import javax.inject.Inject;
+import javax.inject.Singleton;
+import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
+import java.util.stream.Stream;
+
+import static com.gentics.mesh.search.impl.ElasticsearchErrorHelper.mapError;
+import static com.gentics.mesh.search.impl.ElasticsearchErrorHelper.mapToMeshError;
 
 /**
  * Collection of handlers which are used to deal with search requests.
@@ -67,7 +62,6 @@ public class NodeSearchHandler extends AbstractSearchHandler<Node, NodeResponse>
 	/**
 	 * Invoke the given query and return a page of node containers.
 	 * 
-	 * @param gc
 	 * @param query
 	 *            Elasticsearch query
 	 * @param pagingInfo
@@ -77,7 +71,23 @@ public class NodeSearchHandler extends AbstractSearchHandler<Node, NodeResponse>
 	 * @throws ExecutionException
 	 * @throws InterruptedException
 	 */
-	public Page<NodeContent> handleContainerSearch(InternalActionContext ac, String query, PagingParameters pagingInfo, Predicate<NodeContent> filter) {
+	public Single<Page<NodeContent>> handleContainerSearch(InternalActionContext ac, String query, PagingParameters pagingInfo, Predicate<NodeContent> filter) {
+		return db.asyncTx(() -> {
+			RootVertex<Node> root = getIndexHandler().getRootVertex();
+			ContainerType type = ContainerType.forVersion(ac.getVersioningParameters().getVersion());
+			return searchNodes(ac, query)
+				.flatMapMaybe(hit -> hit.toNodeContent(root, type, ac))
+				.filter(filter)
+				.to(pageCollector(pagingInfo));
+		});
+	}
+
+	private <T> Function<Flowable<T>, Single<Page<T>>> pageCollector(PagingParameters pagingInfo) {
+		long toSkip = pagingInfo.getPerPage() * (pagingInfo.getPage() - 1);
+		return upstream -> upstream.toList().map()
+	}
+
+	private Flowable<Hit> searchNodes(InternalActionContext ac, String query) {
 		SearchClient client = searchProvider.getClient();
 		if (log.isDebugEnabled()) {
 			log.debug("Invoking search with query {" + query + "} for {Containers}");
@@ -122,18 +132,6 @@ public class NodeSearchHandler extends AbstractSearchHandler<Node, NodeResponse>
 		}
 
 		HitsInfo hitsInfo = new HitsInfo(firstResponse.getJsonObject("hits"));
-
-		Page<NodeContent> page = db.tx(() -> {
-			RootVertex<Node> root = getIndexHandler().getRootVertex();
-			ContainerType type = ContainerType.forVersion(ac.getVersioningParameters().getVersion());
-			Stream<NodeContent> hits = hitsInfo.streamHits()
-				.map(hit -> hit.toNodeContent(root, type, ac))
-				.flatMap(this::toStream);
-
-			return new DynamicStreamPageImpl<>(hits, pagingInfo, filter);
-		});
-		return page;
-
 	}
 
 	private <T> Stream<T> toStream(Optional<T> opt) {
@@ -175,26 +173,32 @@ public class NodeSearchHandler extends AbstractSearchHandler<Node, NodeResponse>
 			return uuid;
 		}
 
-		public Optional<NodeContent> toNodeContent(RootVertex<Node> root, ContainerType type, InternalActionContext ac) {
-			Node element = root.findByUuid(uuid);
-			if (element == null) {
-				log.warn("Object could not be found for uuid {" + uuid + "} in root vertex {" + root.getRootLabel() + "}");
-				return Optional.empty();
-			}
+		/**
+		 * Maps an elasticsearch hit to a node content.
+		 * This fetches info from the database and creates a transaction for that.
+		 */
+		public Maybe<NodeContent> toNodeContent(RootVertex<Node> root, ContainerType type, InternalActionContext ac) {
+			return db.<Optional<NodeContent>>asyncTx(() -> {
+				Node element = root.findByUuid(uuid);
+				if (element == null) {
+					log.warn("Object could not be found for uuid {" + uuid + "} in root vertex {" + root.getRootLabel() + "}");
+					return Single.just(Optional.empty());
+				}
 
-			Language languageTag = boot.languageRoot().findByLanguageTag(language);
-			if (languageTag == null) {
-				log.warn("Could not find language {" + language + "}");
-				return Optional.empty();
-			}
+				Language languageTag = boot.languageRoot().findByLanguageTag(language);
+				if (languageTag == null) {
+					log.warn("Could not find language {" + language + "}");
+					return Single.just(Optional.empty());
+				}
 
-			// Locate the matching container and add it to the list of found containers
-			NodeGraphFieldContainer container = element.getGraphFieldContainer(languageTag, ac.getRelease(), type);
-			if (container != null) {
-				return Optional.of(new NodeContent(element, container));
-			} else {
-				return Optional.empty();
-			}
+				// Locate the matching container and add it to the list of found containers
+				NodeGraphFieldContainer container = element.getGraphFieldContainer(languageTag, ac.getRelease(), type);
+				if (container != null) {
+					return Single.just(Optional.of(new NodeContent(element, container)));
+				} else {
+					return Single.just(Optional.empty());
+				}
+			}).flatMapMaybe(opt -> opt.map(Maybe::just).orElseGet(Maybe::empty));
 		}
 	}
 }
