@@ -267,7 +267,7 @@ public class PluginManagerImpl implements PluginManager {
 		return db.tx(() -> {
 			User admin = mesh.boot().userRoot().findByUsername("admin");
 			String tokenId = TokenUtil.randomToken();
-			return authProvider.generateAPIToken(admin, tokenId, 60L);
+			return authProvider.generateAPIToken(admin, tokenId, 60);
 		});
 
 	}
