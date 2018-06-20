@@ -30,13 +30,16 @@ public class AdminEndpoint extends AbstractInternalEndpoint {
 
 	private PluginHandler pluginHandler;
 
+	private SupportHandler supportHandler;
+
 	@Inject
-	public AdminEndpoint(MeshAuthChain chain, AdminHandler adminHandler, JobHandler jobHandler, ConsistencyCheckHandler consistencyHandler, PluginHandler pluginHandler) {
+	public AdminEndpoint(MeshAuthChain chain, AdminHandler adminHandler, JobHandler jobHandler, ConsistencyCheckHandler consistencyHandler, PluginHandler pluginHandler, SupportHandler supportHandler) {
 		super("admin", chain);
 		this.adminHandler = adminHandler;
 		this.jobHandler = jobHandler;
 		this.consistencyHandler = consistencyHandler;
 		this.pluginHandler = pluginHandler;
+		this.supportHandler = supportHandler;
 	}
 
 	public AdminEndpoint() {
@@ -63,9 +66,23 @@ public class AdminEndpoint extends AbstractInternalEndpoint {
 		// addExportHandler();
 		// addVerticleHandler();
 		// addServiceHandler();
+		addSupportHandler();
 		addJobHandler();
 		addPluginHandler();
 
+	}
+
+	private void addSupportHandler() {
+		InternalEndpointRoute endpoint = createRoute();
+		endpoint.path("/dump");
+		endpoint.method(GET);
+		endpoint.description("Downloads a dump of the graph database.");
+		endpoint.produces("application/gzip");
+		endpoint.exampleResponse(OK, "ZIP Download containing the needed data");
+		endpoint.handler(rc -> {
+			InternalActionContext ac = wrap(rc);
+			supportHandler.handleDump(ac);
+		});
 	}
 
 	private void addPluginHandler() {
