@@ -964,6 +964,18 @@ public class MeshRestHttpClientImpl extends AbstractMeshRestHttpClient {
 	}
 
 	@Override
+	public MeshRequest<NodeDownloadResponse> fetchSupportDump() {
+		String uri = getBaseUri() + "/admin/support/dump";
+
+		MeshBinaryResponseHandler handler = new MeshBinaryResponseHandler(GET, uri);
+		HttpClientRequest request = getClient().request(GET, uri, handler);
+		authentication.addAuthenticationInformation(request).subscribe(() -> {
+			request.headers().add("Accept", "application/gzip");
+		});
+		return new MeshHttpRequestImpl<>(request, handler, null, null, authentication, "application/json");
+	}
+
+	@Override
 	public MeshRequest<MeshStatusResponse> meshStatus() {
 		return prepareRequest(GET, "/admin/status", MeshStatusResponse.class);
 	}

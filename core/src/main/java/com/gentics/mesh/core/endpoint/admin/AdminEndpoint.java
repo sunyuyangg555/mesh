@@ -74,7 +74,7 @@ public class AdminEndpoint extends AbstractInternalEndpoint {
 
 	private void addSupportHandler() {
 		InternalEndpointRoute endpoint = createRoute();
-		endpoint.path("/dump");
+		endpoint.path("/support/dump");
 		endpoint.method(GET);
 		endpoint.description("Downloads a dump of the graph database.");
 		endpoint.produces("application/gzip");

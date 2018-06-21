@@ -1391,6 +1391,11 @@ public class MeshLocalClientImpl implements MeshRestClient {
 	}
 
 	@Override
+	public MeshRequest<NodeDownloadResponse> fetchSupportDump() {
+		return null;
+	}
+
+	@Override
 	public String getBaseUri() {
 		return DEFAULT_BASEURI;
 	}

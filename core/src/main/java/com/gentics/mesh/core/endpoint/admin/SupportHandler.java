@@ -2,6 +2,7 @@ package com.gentics.mesh.core.endpoint.admin;
 
 import static com.gentics.mesh.core.rest.error.Errors.error;
 import static com.gentics.mesh.rest.Messages.message;
+import static io.netty.handler.codec.http.HttpResponseStatus.BAD_REQUEST;
 import static io.netty.handler.codec.http.HttpResponseStatus.FORBIDDEN;
 import static io.netty.handler.codec.http.HttpResponseStatus.OK;
 
@@ -43,15 +44,23 @@ public class SupportHandler extends AbstractHandler {
 			}
 			MeshOptions options = Mesh.mesh().getOptions();
 			String graphDir = options.getStorageOptions().getDirectory();
+			if (graphDir == null) {
+				throw error(BAD_REQUEST, "error_admin_support_memory_not_supoorted");
+			}
 			Path path = Paths.get(graphDir);
 
 			try {
-				FileOutputStream fos = new FileOutputStream(options.getTempDirectory() + "/dump.zip");
+				File tmpDir = new File(options.getTempDirectory());
+				tmpDir.mkdirs();
+				FileOutputStream fos = new FileOutputStream(tmpDir + "/dump.zip");
 				ZipOutputStream zipOut = new ZipOutputStream(fos);
 				try {
 					DirectoryStream<Path> stream = Files.newDirectoryStream(path);
 					for (Path entry : stream) {
 						File file = entry.toFile();
+						if (!file.isFile()) {
+							continue;
+						}
 						ZipEntry zipEntry = new ZipEntry(file.getName());
 						FileInputStream fis = new FileInputStream(file);
 						zipOut.putNextEntry(zipEntry);

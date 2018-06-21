@@ -4,7 +4,10 @@ import com.gentics.mesh.core.rest.admin.cluster.ClusterStatusResponse;
 import com.gentics.mesh.core.rest.admin.consistency.ConsistencyCheckResponse;
 import com.gentics.mesh.core.rest.admin.status.MeshStatusResponse;
 import com.gentics.mesh.core.rest.common.GenericMessageResponse;
+import com.gentics.mesh.core.rest.node.NodeDownloadResponse;
 import com.gentics.mesh.rest.client.MeshRequest;
+
+import io.vertx.core.buffer.Buffer;
 
 /**
  * Admin specific client methods
@@ -70,5 +73,12 @@ public interface AdminClientMethods {
 	 * @return
 	 */
 	MeshRequest<ConsistencyCheckResponse> repairConsistency();
+
+	/**
+	 * Generate and fetch the support dump from the system.
+	 * 
+	 * @return
+	 */
+	MeshRequest<NodeDownloadResponse> fetchSupportDump();
 
 }

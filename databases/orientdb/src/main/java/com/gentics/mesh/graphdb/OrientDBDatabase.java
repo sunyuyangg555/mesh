@@ -211,7 +211,7 @@ public class OrientDBDatabase extends AbstractDatabase {
 	@Override
 	public void joinCluster() throws InterruptedException {
 		// Wait until another node joined the cluster
-		int timeout = 500;
+		int timeout = 1500;
 		log.info("Waiting {" + timeout + "} seconds for other nodes in the cluster.");
 		if (!topologyEventBridge.waitForMainGraphDB(timeout, SECONDS)) {
 			throw new RuntimeException("Waiting for cluster database source timed out after {" + timeout + "} seconds.");
