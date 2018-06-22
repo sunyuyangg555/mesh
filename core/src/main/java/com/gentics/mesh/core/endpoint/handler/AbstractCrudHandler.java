@@ -49,6 +49,14 @@ public abstract class AbstractCrudHandler<T extends MeshCoreVertex<RM, T>, RM ex
 	}
 
 	/**
+	 * Handle the bulk create request.
+	 * @param ac
+	 */
+	public void handleBulkCreate(InternalActionContext ac) {
+		utils.bulkCreate(ac, () -> getRootVertex(ac));
+	}
+
+	/**
 	 * Handle delete requests.
 	 * 
 	 * @param ac

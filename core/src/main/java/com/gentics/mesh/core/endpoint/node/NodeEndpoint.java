@@ -67,6 +67,7 @@ public class NodeEndpoint extends AbstractProjectEndpoint {
 		}
 
 		addCreateHandler();
+		addBatchHandlers();
 		addReadHandler();
 		addUpdateHandler();
 		addDeleteHandler();
@@ -288,6 +289,22 @@ public class NodeEndpoint extends AbstractProjectEndpoint {
 			InternalActionContext ac = wrap(rc);
 			ac.getVersioningParameters().setVersion("draft");
 			crudHandler.handleCreate(ac);
+		});
+	}
+
+	private void addBatchHandlers() {
+		InternalEndpointRoute endpoint = createRoute();
+		endpoint.path("/");
+		endpoint.method(POST);
+		endpoint.description("Create nodes using a batch request.");
+		endpoint.produces(APPLICATION_JSON);
+		endpoint.consumes(APPLICATION_JSON);
+		endpoint.exampleRequest(nodeExamples.getNodeBatchRequest());
+		//endpoint.exampleResponse(CREATED, nodeExamples.getNodeResponseWithAllFields(), "Created node.");
+		endpoint.handler(rc -> {
+			InternalActionContext ac = wrap(rc);
+			ac.getVersioningParameters().setVersion("draft");
+			crudHandler.handleBulkCreate(ac);
 		});
 	}
 

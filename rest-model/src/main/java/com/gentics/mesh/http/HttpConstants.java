@@ -19,6 +19,10 @@ public final class HttpConstants {
 
 	public static final String APPLICATION_JSON_UTF8 = APPLICATION_JSON + "; charset=utf-8";
 
+	public static final String APPLICATION_NDJSON = "application/x-ndjson";
+
+	public static final String APPLICATION_NDJSON_UTF8 = APPLICATION_NDJSON + "; charset=utf-8";
+
 	public static final String APPLICATION_YAML = "application/x-yaml";
 
 	public static final String APPLICATION_YAML_UTF8 = APPLICATION_YAML + "; charset=utf-8";

@@ -67,6 +67,10 @@ public class HandlerUtilities {
 	public <T extends MeshCoreVertex<RM, T>, RM extends RestModel> void createElement(InternalActionContext ac, TxAction1<RootVertex<T>> handler) {
 		createOrUpdateElement(ac, null, handler);
 	}
+	
+	public <T extends MeshCoreVertex<RM, T>, RM extends RestModel> void bulkCreate(InternalActionContext ac, TxAction1<RootVertex<T>> handler) {
+		
+	}
 
 	/**
 	 * Delete the specified element.

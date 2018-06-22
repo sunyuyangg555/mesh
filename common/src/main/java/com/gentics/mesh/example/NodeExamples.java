@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.codehaus.jettison.json.JSONObject;
 import org.raml.model.ParamType;
 import org.raml.model.parameter.FormParameter;
 
@@ -301,6 +302,11 @@ public class NodeExamples extends AbstractExamples {
 		binaryParameter.setType(ParamType.FILE);
 		parameters.put("binary", Arrays.asList(binaryParameter));
 		return parameters;
+	}
+
+	public String getNodeBatchRequest() {
+		// TODO Auto-generated method stub
+		return null;
 	}
 
 }
