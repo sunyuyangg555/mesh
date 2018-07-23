@@ -373,7 +373,7 @@ public class GraphQLEndpointTest extends AbstractMeshTest {
 				micronodeField.getMicronode().createString("postcode").setString("1010");
 			}
 			// folder("news").getChildren().forEach(e -> role().revokePermissions(e, GraphPermission.READ_PUBLISHED_PERM));
-			container.updateWebrootPathInfo(initialBranchUuid(), null);
+			container.updateWebrootPathEdges(null, initialBranchUuid(), null);
 			tx.success();
 		}
 

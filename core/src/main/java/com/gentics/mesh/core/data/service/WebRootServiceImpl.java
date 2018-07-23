@@ -1,5 +1,7 @@
 package com.gentics.mesh.core.data.service;
 
+import static com.gentics.mesh.core.data.relationship.GraphRelationships.HAS_FIELD_CONTAINER;
+
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
@@ -11,9 +13,11 @@ import javax.inject.Singleton;
 
 import com.gentics.mesh.context.InternalActionContext;
 import com.gentics.mesh.core.data.ContainerType;
+import com.gentics.mesh.core.data.GraphFieldContainerEdge;
 import com.gentics.mesh.core.data.NodeGraphFieldContainer;
 import com.gentics.mesh.core.data.Project;
-import com.gentics.mesh.core.data.container.impl.NodeGraphFieldContainerImpl;
+import com.gentics.mesh.core.data.impl.GraphFieldContainerEdgeImpl;
+import com.gentics.mesh.core.data.node.ContainerPathEdge;
 import com.gentics.mesh.core.data.node.Node;
 import com.gentics.mesh.graphdb.spi.Database;
 import com.gentics.mesh.path.Path;
@@ -33,14 +37,14 @@ public class WebRootServiceImpl implements WebRootService {
 	public Path findByProjectPath(InternalActionContext ac, String path) {
 		Project project = ac.getProject();
 
-		// First try to locate the content via the url path index
+		// First try to locate the content via the url path index (niceurl)
 		ContainerType type = ContainerType.forVersion(ac.getVersioningParameters().getVersion());
 		NodeGraphFieldContainer containerByWebUrlPath = findByUrlFieldPath(ac.getBranch().getUuid(), path, type);
 		if (containerByWebUrlPath != null) {
 			return containerByWebUrlPath.getPath(ac);
 		}
 
-		// Locating did not yield a result. Lets try the regular segmentpath info.
+		// Locating did not yield a result. Lets try the regular segment path info.
 		Path nodePath = new Path();
 		Node baseNode = project.getBaseNode();
 		nodePath.setTargetPath(path);
@@ -68,15 +72,15 @@ public class WebRootServiceImpl implements WebRootService {
 
 	@Override
 	public NodeGraphFieldContainer findByUrlFieldPath(String branchUuid, String path, ContainerType type) {
-
-		String fieldKey = NodeGraphFieldContainer.WEBROOT_URLFIELD_PROPERTY_KEY;
-		if (type == ContainerType.PUBLISHED) {
-			fieldKey = NodeGraphFieldContainer.PUBLISHED_WEBROOT_URLFIELD_PROPERTY_KEY;
-		}
-
-		// Prefix each path with the branchuuid in order to scope the paths by branch
+		String indexKey = ContainerPathEdge.composeUrlFieldIndexName(type);
 		String key = branchUuid + path;
-		return database.findVertex(fieldKey, key, NodeGraphFieldContainerImpl.class);
+
+		GraphFieldContainerEdge edge = database.findEdge(indexKey, key, GraphFieldContainerEdgeImpl.class);
+		if (edge != null) {
+			return edge.getNodeContainer();
+		} else {
+			return null;
+		}
 	}
 
 }

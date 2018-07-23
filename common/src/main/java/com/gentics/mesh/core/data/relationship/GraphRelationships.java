@@ -108,6 +108,7 @@ public class GraphRelationships {
 	public static final String HAS_EDITOR = "HAS_EDITOR";
 	public static final String HAS_LANGUAGE = "HAS_LANGUAGE";
 	public static final String HAS_FIELD_CONTAINER = "HAS_FIELD_CONTAINER";
+	public static final String HAS_CONTAINER_PATH = "HAS_CONTAINER_PATH";
 
 	public static final String HAS_PARENT_NODE = "HAS_PARENT_NODE";
 

@@ -1,5 +1,50 @@
 package com.gentics.mesh.core.data.node.impl;
 
+import static com.gentics.mesh.core.data.ContainerType.DRAFT;
+import static com.gentics.mesh.core.data.ContainerType.INITIAL;
+import static com.gentics.mesh.core.data.ContainerType.PUBLISHED;
+import static com.gentics.mesh.core.data.ContainerType.forVersion;
+import static com.gentics.mesh.core.data.relationship.GraphPermission.CREATE_PERM;
+import static com.gentics.mesh.core.data.relationship.GraphPermission.READ_PERM;
+import static com.gentics.mesh.core.data.relationship.GraphPermission.READ_PUBLISHED_PERM;
+import static com.gentics.mesh.core.data.relationship.GraphRelationships.ASSIGNED_TO_PROJECT;
+import static com.gentics.mesh.core.data.relationship.GraphRelationships.HAS_CREATOR;
+import static com.gentics.mesh.core.data.relationship.GraphRelationships.HAS_FIELD_CONTAINER;
+import static com.gentics.mesh.core.data.relationship.GraphRelationships.HAS_PARENT_NODE;
+import static com.gentics.mesh.core.data.relationship.GraphRelationships.HAS_ROLE;
+import static com.gentics.mesh.core.data.relationship.GraphRelationships.HAS_SCHEMA_CONTAINER;
+import static com.gentics.mesh.core.data.relationship.GraphRelationships.HAS_TAG;
+import static com.gentics.mesh.core.data.relationship.GraphRelationships.HAS_USER;
+import static com.gentics.mesh.core.rest.error.Errors.error;
+import static com.gentics.mesh.graphdb.spi.FieldType.LINK;
+import static com.gentics.mesh.graphdb.spi.FieldType.STRING;
+import static com.gentics.mesh.util.URIUtils.encodeSegment;
+import static com.tinkerpop.blueprints.Direction.IN;
+import static com.tinkerpop.blueprints.Direction.OUT;
+import static io.netty.handler.codec.http.HttpResponseStatus.BAD_REQUEST;
+import static io.netty.handler.codec.http.HttpResponseStatus.FORBIDDEN;
+import static io.netty.handler.codec.http.HttpResponseStatus.METHOD_NOT_ALLOWED;
+import static io.netty.handler.codec.http.HttpResponseStatus.NOT_FOUND;
+import static org.apache.commons.lang3.StringUtils.isEmpty;
+
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.Stack;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
+
+import org.apache.commons.lang3.NotImplementedException;
+
 import com.gentics.mesh.Mesh;
 import com.gentics.mesh.context.BulkActionContext;
 import com.gentics.mesh.context.InternalActionContext;
@@ -21,11 +66,13 @@ import com.gentics.mesh.core.data.container.impl.NodeGraphFieldContainerImpl;
 import com.gentics.mesh.core.data.diff.FieldContainerChange;
 import com.gentics.mesh.core.data.generic.AbstractGenericFieldContainerVertex;
 import com.gentics.mesh.core.data.generic.MeshVertexImpl;
+import com.gentics.mesh.core.data.impl.ContainerPathEdgeImpl;
 import com.gentics.mesh.core.data.impl.GraphFieldContainerEdgeImpl;
 import com.gentics.mesh.core.data.impl.ProjectImpl;
 import com.gentics.mesh.core.data.impl.TagEdgeImpl;
 import com.gentics.mesh.core.data.impl.TagImpl;
 import com.gentics.mesh.core.data.impl.UserImpl;
+import com.gentics.mesh.core.data.node.ContainerPathEdge;
 import com.gentics.mesh.core.data.node.Node;
 import com.gentics.mesh.core.data.node.field.BinaryGraphField;
 import com.gentics.mesh.core.data.node.field.StringGraphField;
@@ -58,6 +105,7 @@ import com.gentics.mesh.core.rest.user.NodeReference;
 import com.gentics.mesh.dagger.DB;
 import com.gentics.mesh.dagger.MeshInternal;
 import com.gentics.mesh.graphdb.spi.Database;
+import com.gentics.mesh.graphdb.spi.FieldMap;
 import com.gentics.mesh.handler.ActionContext;
 import com.gentics.mesh.json.JsonUtil;
 import com.gentics.mesh.parameter.DeleteParameters;
@@ -85,53 +133,12 @@ import com.syncleus.ferma.traversals.VertexTraversal;
 import com.syncleus.ferma.tx.Tx;
 import com.tinkerpop.blueprints.Edge;
 import com.tinkerpop.blueprints.Vertex;
+
 import io.reactivex.Observable;
 import io.reactivex.Single;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import org.apache.commons.lang3.NotImplementedException;
-
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.Stack;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
-
-import static com.gentics.mesh.core.data.ContainerType.DRAFT;
-import static com.gentics.mesh.core.data.ContainerType.INITIAL;
-import static com.gentics.mesh.core.data.ContainerType.PUBLISHED;
-import static com.gentics.mesh.core.data.ContainerType.forVersion;
-import static com.gentics.mesh.core.data.relationship.GraphPermission.CREATE_PERM;
-import static com.gentics.mesh.core.data.relationship.GraphPermission.READ_PERM;
-import static com.gentics.mesh.core.data.relationship.GraphPermission.READ_PUBLISHED_PERM;
-import static com.gentics.mesh.core.data.relationship.GraphRelationships.ASSIGNED_TO_PROJECT;
-import static com.gentics.mesh.core.data.relationship.GraphRelationships.HAS_CREATOR;
-import static com.gentics.mesh.core.data.relationship.GraphRelationships.HAS_FIELD_CONTAINER;
-import static com.gentics.mesh.core.data.relationship.GraphRelationships.HAS_PARENT_NODE;
-import static com.gentics.mesh.core.data.relationship.GraphRelationships.HAS_ROLE;
-import static com.gentics.mesh.core.data.relationship.GraphRelationships.HAS_SCHEMA_CONTAINER;
-import static com.gentics.mesh.core.data.relationship.GraphRelationships.HAS_TAG;
-import static com.gentics.mesh.core.data.relationship.GraphRelationships.HAS_USER;
-import static com.gentics.mesh.core.rest.error.Errors.error;
-import static com.gentics.mesh.util.URIUtils.encodeSegment;
-import static com.tinkerpop.blueprints.Direction.IN;
-import static com.tinkerpop.blueprints.Direction.OUT;
-import static io.netty.handler.codec.http.HttpResponseStatus.BAD_REQUEST;
-import static io.netty.handler.codec.http.HttpResponseStatus.FORBIDDEN;
-import static io.netty.handler.codec.http.HttpResponseStatus.METHOD_NOT_ALLOWED;
-import static io.netty.handler.codec.http.HttpResponseStatus.NOT_FOUND;
-import static org.apache.commons.lang3.StringUtils.isEmpty;
 
 /**
  * @see Node
@@ -143,10 +150,14 @@ public class NodeImpl extends AbstractGenericFieldContainerVertex<NodeResponse, 
 	public static void init(Database database) {
 		database.addVertexType(NodeImpl.class, MeshVertexImpl.class);
 		database.addEdgeIndex(HAS_PARENT_NODE);
-		database.addCustomEdgeIndex(HAS_PARENT_NODE, "branch_out", "out", BRANCH_UUID_KEY);
-		database.addCustomEdgeIndex(HAS_PARENT_NODE, "branch", "in", BRANCH_UUID_KEY);
-		database.addCustomEdgeIndex(HAS_FIELD_CONTAINER, "field", "out", GraphFieldContainerEdgeImpl.BRANCH_UUID_KEY,
-			GraphFieldContainerEdgeImpl.EDGE_TYPE_KEY);
+		database.addCustomEdgeIndex(HAS_PARENT_NODE, "branch_out", FieldMap.create("out", LINK, BRANCH_UUID_KEY, STRING), false);
+		database.addCustomEdgeIndex(HAS_PARENT_NODE, "branch", FieldMap.create("in", LINK, BRANCH_UUID_KEY, STRING), false);
+
+		FieldMap fields = new FieldMap();
+		fields.put("out", LINK);
+		fields.put(GraphFieldContainerEdge.BRANCH_UUID_KEY, STRING);
+		fields.put(GraphFieldContainerEdge.EDGE_TYPE_KEY, STRING);
+		database.addCustomEdgeIndex(HAS_FIELD_CONTAINER, "field", fields, false);
 	}
 
 	@Override
@@ -391,10 +402,8 @@ public class NodeImpl extends AbstractGenericFieldContainerVertex<NodeResponse, 
 
 		// remove existing draft edge
 		if (draftEdge != null) {
-			previous.setProperty(NodeGraphFieldContainerImpl.WEBROOT_PROPERTY_KEY, null);
-			previous.setProperty(NodeGraphFieldContainerImpl.WEBROOT_URLFIELD_PROPERTY_KEY, null);
-			newContainer.updateWebrootPathInfo(branchUuid, "node_conflicting_segmentfield_update");
 			draftEdge.remove();
+			newContainer.updateWebrootPathEdges(null, branchUuid, "node_conflicting_segmentfield_update");
 		}
 		// We need to update the display field property since we created a new
 		// node graph field container.
@@ -420,11 +429,11 @@ public class NodeImpl extends AbstractGenericFieldContainerVertex<NodeResponse, 
 	}
 
 	@Override
-	public EdgeFrame getGraphFieldContainerEdge(String languageTag, String branchUuid, ContainerType type) {
+	public GraphFieldContainerEdge getGraphFieldContainerEdge(String languageTag, String branchUuid, ContainerType type) {
 		EdgeTraversal<?, ?, ?> edgeTraversal = outE(HAS_FIELD_CONTAINER).has(GraphFieldContainerEdgeImpl.LANGUAGE_TAG_KEY, languageTag).has(
 			GraphFieldContainerEdgeImpl.BRANCH_UUID_KEY, branchUuid).has(GraphFieldContainerEdgeImpl.EDGE_TYPE_KEY, type.getCode());
 		if (edgeTraversal.hasNext()) {
-			return edgeTraversal.next();
+			return edgeTraversal.frameExplicit(GraphFieldContainerEdgeImpl.class).iterator().next();
 		} else {
 			return null;
 		}
@@ -1144,19 +1153,11 @@ public class NodeImpl extends AbstractGenericFieldContainerVertex<NodeResponse, 
 			}
 		}
 
-		List<? extends NodeGraphFieldContainer> published = getGraphFieldContainers(branch, PUBLISHED);
-
 		String branchUuid = branch.getUuid();
 
 		// Remove the published edge for each found container
 		List<? extends NodeGraphFieldContainer> publishedContainers = getGraphFieldContainers(branchUuid, PUBLISHED);
 		getGraphFieldContainerEdges(branchUuid, PUBLISHED).stream().forEach(EdgeFrame::remove);
-
-		// Reset the webroot property for each published container
-		published.forEach(c -> {
-			c.setProperty(NodeGraphFieldContainer.PUBLISHED_WEBROOT_PROPERTY_KEY, null);
-			c.setProperty(NodeGraphFieldContainer.PUBLISHED_WEBROOT_URLFIELD_PROPERTY_KEY, null);
-		});
 
 		assertPublishConsistency(ac, branch);
 
@@ -1239,9 +1240,6 @@ public class NodeImpl extends AbstractGenericFieldContainerVertex<NodeResponse, 
 		}
 		// 2. Remove the "published" edge
 		getGraphFieldContainerEdge(languageTag, branchUuid, PUBLISHED).remove();
-		published.setProperty(NodeGraphFieldContainer.PUBLISHED_WEBROOT_PROPERTY_KEY, null);
-		published.setProperty(NodeGraphFieldContainer.PUBLISHED_WEBROOT_URLFIELD_PROPERTY_KEY, null);
-
 		assertPublishConsistency(ac, branch);
 
 		// 3. Invoke a delete on the document since it must be removed from the published index
@@ -1260,7 +1258,7 @@ public class NodeImpl extends AbstractGenericFieldContainerVertex<NodeResponse, 
 			// check the published edge again
 			NodeGraphFieldContainerImpl oldPublishedContainer = currentPublished.inV().nextOrDefaultExplicit(NodeGraphFieldContainerImpl.class, null);
 			currentPublished.remove();
-			oldPublishedContainer.updateWebrootPathInfo(branchUuid, "node_conflicting_segmentfield_publish");
+			oldPublishedContainer.updateWebrootPathEdges(null, branchUuid, "node_conflicting_segmentfield_publish");
 		}
 
 		// create new published edge
@@ -1268,7 +1266,7 @@ public class NodeImpl extends AbstractGenericFieldContainerVertex<NodeResponse, 
 		edge.setLanguageTag(languageTag);
 		edge.setBranchUuid(branchUuid);
 		edge.setType(PUBLISHED);
-		container.updateWebrootPathInfo(branchUuid, "node_conflicting_segmentfield_publish");
+		container.updateWebrootPathEdges(null, branchUuid, "node_conflicting_segmentfield_publish");
 	}
 
 	@Override
@@ -1751,13 +1749,13 @@ public class NodeImpl extends AbstractGenericFieldContainerVertex<NodeResponse, 
 
 		// Update published graph field containers
 		getGraphFieldContainers(branchUuid, PUBLISHED).stream().forEach(container -> {
-			container.updateWebrootPathInfo(branchUuid, "node_conflicting_segmentfield_move");
+			container.updateWebrootPathEdges(null, branchUuid, "node_conflicting_segmentfield_move");
 		});
 		batch.store(this, branchUuid, PUBLISHED, false);
 
 		// Update draft graph field containers
 		getGraphFieldContainers(branchUuid, DRAFT).stream().forEach(container -> {
-			container.updateWebrootPathInfo(branchUuid, "node_conflicting_segmentfield_move");
+			container.updateWebrootPathEdges(null, branchUuid, "node_conflicting_segmentfield_move");
 		});
 		batch.store(this, branchUuid, DRAFT, false);
 
@@ -1868,24 +1866,29 @@ public class NodeImpl extends AbstractGenericFieldContainerVertex<NodeResponse, 
 		String segment = pathStack.pop();
 
 		if (log.isDebugEnabled()) {
-			log.debug("Resolving for path segment {" + segment + "}");
+			log.debug("Resolving for path segment {" + segment + "} from node {" + getUuid() + "}");
 		}
 
-		FramedGraph graph = Tx.getActive().getGraph();
-		String indexName = type == ContainerType.PUBLISHED ?
-			NodeGraphFieldContainer.PUBLISHED_WEBROOT_INDEX_NAME :
-			NodeGraphFieldContainer.WEBROOT_INDEX_NAME;
-		String key = NodeGraphFieldContainer.composeWebrootIndexKey(segment, branchUuid, this);
-
-		Iterator<? extends NodeGraphFieldContainerImpl> childNodeIt = graph.getFramedVertices(indexName, key, NodeGraphFieldContainerImpl.class).iterator();
-		if (childNodeIt.hasNext()) {
-			Node childNode = childNodeIt.next().getParentNode();
+		ContainerPathEdge edge = ContainerPathEdgeImpl.lookup(null, type, segment, branchUuid, this);
+		if (edge != null) {
+			Node childNode = edge.getNode();
 			PathSegment pathSegment = childNode.getSegment(branchUuid, type, segment);
 			path.addSegment(pathSegment);
 			return childNode.resolvePath(branchUuid, type, path, pathStack);
 		} else {
 			throw error(NOT_FOUND, "node_not_found_for_path", path.getTargetPath());
 		}
+
+		// Iterator<? extends NodeGraphFieldContainerImpl> childNodeIt = graph.getFramedVertices(indexName, key, NodeGraphFieldContainerImpl.class).iterator();
+		// if (childNodeIt.hasNext()) {
+		// Node childNode = childNodeIt.next().getParentNode();
+		// PathSegment pathSegment = childNode.getSegment(branchUuid, type, segment);
+		// path.addSegment(pathSegment);
+		// return childNode.resolvePath(branchUuid, type, path, pathStack);
+		// } else {
+		// throw error(NOT_FOUND, "node_not_found_for_path", path.getTargetPath());
+		// }
+
 	}
 
 	/**

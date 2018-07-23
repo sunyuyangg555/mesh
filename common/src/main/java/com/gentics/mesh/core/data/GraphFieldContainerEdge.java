@@ -1,10 +1,13 @@
 package com.gentics.mesh.core.data;
 
+import com.gentics.mesh.core.data.node.Node;
+import com.syncleus.ferma.EdgeFrame;
+
 /**
  * Interface for edges between i18n field containers and the node. Edges are language specific, are bound to branches and are either of type "Initial, Draft or
  * Published"
  */
-public interface GraphFieldContainerEdge {
+public interface GraphFieldContainerEdge extends EdgeFrame {
 
 	String LANGUAGE_TAG_KEY = "languageTag";
 
@@ -56,4 +59,14 @@ public interface GraphFieldContainerEdge {
 	 */
 	void setBranchUuid(String uuid);
 
+	BasicFieldContainer getContainer();
+
+	NodeGraphFieldContainer getNodeContainer();
+
+	/**
+	 * Return the node from which this edge originates.
+	 * 
+	 * @return
+	 */
+	Node getNode();
 }

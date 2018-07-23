@@ -76,6 +76,7 @@ public final class DatabaseHelper {
 		GraphRelationships.init(database);
 		GraphPermission.init(database);
 		GraphFieldContainerEdgeImpl.init(database);
+		ContainerPathEdgeImpl.init(database);
 		MicronodeGraphFieldImpl.init(database);
 		TagEdgeImpl.init(database);
 		BranchSchemaEdgeImpl.init(database);

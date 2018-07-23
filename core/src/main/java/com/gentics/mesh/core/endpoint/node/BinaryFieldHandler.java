@@ -296,7 +296,7 @@ public class BinaryFieldHandler extends AbstractHandler {
 			}
 			// If the binary field is the segment field, we need to update the webroot info in the node
 			if (field.getFieldKey().equals(newDraftVersion.getSchemaContainerVersion().getSchema().getSegmentField())) {
-				newDraftVersion.updateWebrootPathInfo(branch.getUuid(), "node_conflicting_segmentfield_upload");
+				newDraftVersion.updateWebrootPathEdges(null, branch.getUuid(), "node_conflicting_segmentfield_upload");
 			}
 
 			return batch.store(node, branch.getUuid(), DRAFT, false).processAsync().andThen(node.transformToRest(ac, 0));

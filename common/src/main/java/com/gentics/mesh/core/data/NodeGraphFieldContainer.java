@@ -4,6 +4,7 @@ import static com.gentics.mesh.core.data.ContainerType.DRAFT;
 import static com.gentics.mesh.core.data.ContainerType.INITIAL;
 import static com.gentics.mesh.core.data.ContainerType.PUBLISHED;
 
+import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -11,13 +12,14 @@ import java.util.Set;
 import com.gentics.mesh.context.BulkActionContext;
 import com.gentics.mesh.context.InternalActionContext;
 import com.gentics.mesh.core.data.diff.FieldContainerChange;
+import com.gentics.mesh.core.data.node.ContainerPathEdge;
 import com.gentics.mesh.core.data.node.Node;
 import com.gentics.mesh.core.data.node.field.list.MicronodeGraphFieldList;
 import com.gentics.mesh.core.data.node.field.nesting.MicronodeGraphField;
 import com.gentics.mesh.core.data.schema.MicroschemaContainerVersion;
 import com.gentics.mesh.core.data.schema.SchemaContainerVersion;
-import com.gentics.mesh.core.rest.error.Errors;
 import com.gentics.mesh.core.rest.node.FieldMap;
+import com.gentics.mesh.handler.ActionContext;
 import com.gentics.mesh.path.Path;
 import com.gentics.mesh.util.Tuple;
 import com.gentics.mesh.util.VersionNumber;
@@ -26,26 +28,6 @@ import com.gentics.mesh.util.VersionNumber;
  * A node field container is an aggregation node that holds localized fields (e.g.: StringField, NodeField...)
  */
 public interface NodeGraphFieldContainer extends GraphFieldContainer, EditorTrackingVertex {
-
-	// Webroot index
-
-	String WEBROOT_PROPERTY_KEY = "webrootPathInfo";
-
-	String WEBROOT_INDEX_NAME = "webrootPathInfoIndex";
-
-	String PUBLISHED_WEBROOT_PROPERTY_KEY = "publishedWebrootPathInfo";
-
-	String PUBLISHED_WEBROOT_INDEX_NAME = "publishedWebrootPathInfoIndex";
-
-	// Url Field index
-
-	String WEBROOT_URLFIELD_PROPERTY_KEY = "webrootUrlInfo";
-
-	String WEBROOT_URLFIELD_INDEX_NAME = "webrootUrlInfoIndex";
-
-	String PUBLISHED_WEBROOT_URLFIELD_PROPERTY_KEY = "publishedWebrootUrlInfo";
-
-	String PUBLISHED_WEBROOT_URLFIELD_INDEX_NAME = "publishedWebrootInfoIndex";
 
 	/**
 	 * Type Value: {@value #TYPE}
@@ -125,23 +107,6 @@ public interface NodeGraphFieldContainer extends GraphFieldContainer, EditorTrac
 	}
 
 	/**
-	 * Creates the key for the webroot index.
-	 *
-	 * @param segmentValue Value of the segment field
-	 * @param branchUuid Uuid of the branch
-	 * @param parent Parent of the node
-	 * @return The composed key
-	 */
-	static String composeWebrootIndexKey(String segmentValue, String branchUuid, Node parent) {
-		StringBuilder webRootInfo = new StringBuilder(segmentValue);
-		webRootInfo.append("-").append(branchUuid);
-		if (parent != null) {
-			webRootInfo.append("-").append(parent.getUuid());
-		}
-		return webRootInfo.toString();
-	}
-
-	/**
 	 * Return the document id for the container.
 	 * 
 	 * @return
@@ -197,29 +162,6 @@ public interface NodeGraphFieldContainer extends GraphFieldContainer, EditorTrac
 	 * @return Found node or null if no node could be found.
 	 */
 	Node getParentNode(String uuid);
-
-	/**
-	 * Update the property webroot path info. This will also check for uniqueness conflicts of the webroot path and will throw a
-	 * {@link Errors#conflict(String, String, String, String...)} if one found.
-	 * 
-	 * @param ac
-	 * @param branchUuid
-	 *            branch Uuid
-	 * @param conflictI18n
-	 *            key of the message in case of conflicts
-	 */
-	void updateWebrootPathInfo(InternalActionContext ac, String branchUuid, String conflictI18n);
-
-	/**
-	 * Update the property webroot path info. This will also check for uniqueness conflicts of the webroot path and will throw a
-	 * {@link Errors#conflict(String, String, String, String...)} if one found.
-	 * 
-	 * @param branchUuid
-	 * @param conflictI18n
-	 */
-	default void updateWebrootPathInfo(String branchUuid, String conflictI18n) {
-		updateWebrootPathInfo(null, branchUuid, conflictI18n);
-	}
 
 	/**
 	 * Get the Version Number or null if no version set.
@@ -279,8 +221,7 @@ public interface NodeGraphFieldContainer extends GraphFieldContainer, EditorTrac
 	void clone(NodeGraphFieldContainer container);
 
 	/**
-	 * Check whether this field container is the initial version for any
-	 * branch.
+	 * Check whether this field container is the initial version for any branch.
 	 * 
 	 * @return true if it is the initial, false if not
 	 */
@@ -315,8 +256,7 @@ public interface NodeGraphFieldContainer extends GraphFieldContainer, EditorTrac
 	boolean isType(ContainerType type);
 
 	/**
-	 * Check whether this field container is the initial version for the given
-	 * branch.
+	 * Check whether this field container is the initial version for the given branch.
 	 * 
 	 * @param branchUuid
 	 *            branch Uuid
@@ -448,5 +388,33 @@ public interface NodeGraphFieldContainer extends GraphFieldContainer, EditorTrac
 	 * @return
 	 */
 	Path getPath(InternalActionContext ac);
+
+	/**
+	 * Return an iterator over the edges for the given type and branch.
+	 * 
+	 * @param type
+	 * @param branchUuid
+	 * @return
+	 */
+	Iterator<? extends GraphFieldContainerEdge> getContainerEdge(ContainerType type, String branchUuid);
+
+	/**
+	 * Return the path edge for the given branch.
+	 * 
+	 * @param branchUuid
+	 * @return
+	 */
+	Iterator<? extends ContainerPathEdge> getPathEdge(String branchUuid);
+
+	/**
+	 * Update the webroot path edges which contain the information about urlfields and segment fields.
+	 * 
+	 * @param ac
+	 *            Action Context
+	 * @param branchUuid
+	 *            affected branch
+	 * @param i18nMessageKey
+	 */
+	void updateWebrootPathEdges(ActionContext ac, String branchUuid, String i18nMessageKey);
 
 }

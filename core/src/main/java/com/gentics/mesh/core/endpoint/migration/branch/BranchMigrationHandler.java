@@ -3,6 +3,7 @@ package com.gentics.mesh.core.endpoint.migration.branch;
 import static com.gentics.mesh.core.data.ContainerType.DRAFT;
 import static com.gentics.mesh.core.data.ContainerType.INITIAL;
 import static com.gentics.mesh.core.data.ContainerType.PUBLISHED;
+import static com.gentics.mesh.core.data.relationship.GraphRelationships.HAS_CONTAINER_PATH;
 import static com.gentics.mesh.core.data.relationship.GraphRelationships.HAS_FIELD_CONTAINER;
 import static com.gentics.mesh.core.rest.admin.migration.MigrationStatus.RUNNING;
 import static com.gentics.mesh.core.rest.error.Errors.error;
@@ -13,7 +14,9 @@ import javax.inject.Singleton;
 
 import com.gentics.mesh.core.data.Project;
 import com.gentics.mesh.core.data.Branch;
+import com.gentics.mesh.core.data.impl.ContainerPathEdgeImpl;
 import com.gentics.mesh.core.data.impl.GraphFieldContainerEdgeImpl;
+import com.gentics.mesh.core.data.node.ContainerPathEdge;
 import com.gentics.mesh.core.data.node.Node;
 import com.gentics.mesh.core.data.search.SearchQueue;
 import com.gentics.mesh.core.data.search.SearchQueueBatch;
@@ -94,8 +97,8 @@ public class BranchMigrationHandler extends AbstractMigrationHandler {
 	}
 
 	/**
-	 * Migrate the node from the old branch to the new branch. This will effectively create the edges between the new branch and the node. Additionally also
-	 * the tags will be update to correspond with the new branch structure.
+	 * Migrate the node from the old branch to the new branch. This will effectively create the edges between the new branch and the node. Additionally also the
+	 * tags will be update to correspond with the new branch structure.
 	 * 
 	 * @param node
 	 * @param oldBranch
@@ -108,32 +111,38 @@ public class BranchMigrationHandler extends AbstractMigrationHandler {
 			return null;
 		}
 
+		Node parent = node.getParentNode(oldBranch.getUuid());
+		if (parent != null) {
+			node.setParentNode(newBranch.getUuid(), parent);
+		}
+
 		node.getGraphFieldContainersIt(oldBranch, DRAFT).forEach(container -> {
 			GraphFieldContainerEdgeImpl initialEdge = node.addFramedEdge(HAS_FIELD_CONTAINER, container, GraphFieldContainerEdgeImpl.class);
+			String branchUuid = newBranch.getUuid();
 			initialEdge.setLanguageTag(container.getLanguage().getLanguageTag());
 			initialEdge.setType(INITIAL);
-			initialEdge.setBranchUuid(newBranch.getUuid());
+			initialEdge.setBranchUuid(branchUuid);
 
 			GraphFieldContainerEdgeImpl draftEdge = node.addFramedEdge(HAS_FIELD_CONTAINER, container, GraphFieldContainerEdgeImpl.class);
 			draftEdge.setLanguageTag(container.getLanguage().getLanguageTag());
 			draftEdge.setType(DRAFT);
-			draftEdge.setBranchUuid(newBranch.getUuid());
+			draftEdge.setBranchUuid(branchUuid);
+
+			container.updateWebrootPathEdges(null, branchUuid, "node_conflicting_segmentfield_update");
 		});
 		SearchQueueBatch batch = searchQueue.create();
 		batch.store(node, newBranch.getUuid(), DRAFT, false);
 
 		node.getGraphFieldContainersIt(oldBranch, PUBLISHED).forEach(container -> {
-			GraphFieldContainerEdgeImpl edge = node.addFramedEdge(HAS_FIELD_CONTAINER, container, GraphFieldContainerEdgeImpl.class);
-			edge.setLanguageTag(container.getLanguage().getLanguageTag());
-			edge.setType(PUBLISHED);
-			edge.setBranchUuid(newBranch.getUuid());
+			GraphFieldContainerEdgeImpl publishEdge = node.addFramedEdge(HAS_FIELD_CONTAINER, container, GraphFieldContainerEdgeImpl.class);
+			String branchUuid = newBranch.getUuid();
+			publishEdge.setLanguageTag(container.getLanguage().getLanguageTag());
+			publishEdge.setType(PUBLISHED);
+			publishEdge.setBranchUuid(newBranch.getUuid());
+
+			container.updateWebrootPathEdges(null, branchUuid, "node_conflicting_segmentfield_update");
 		});
 		batch.store(node, newBranch.getUuid(), PUBLISHED, false);
-
-		Node parent = node.getParentNode(oldBranch.getUuid());
-		if (parent != null) {
-			node.setParentNode(newBranch.getUuid(), parent);
-		}
 
 		// migrate tags
 		node.getTags(oldBranch).forEach(tag -> node.addTag(tag, newBranch));
