@@ -72,6 +72,8 @@ public class GraphQLHandler {
 						log.debug("Error: " + error.getErrorType() + ":" + error.getMessage() + ":" + loc);
 					}
 				}
+			} else {
+				tx.success();
 			}
 			if (result.getData() != null) {
 				Map<String, Object> data = (Map<String, Object>) result.getData();

@@ -52,6 +52,7 @@ import com.gentics.mesh.graphql.filter.GroupFilter;
 import com.gentics.mesh.graphql.filter.NodeFilter;
 import com.gentics.mesh.graphql.filter.RoleFilter;
 import com.gentics.mesh.graphql.filter.UserFilter;
+import com.gentics.mesh.graphql.mutation.UserMutations;
 import com.gentics.mesh.graphql.type.field.FieldDefinitionProvider;
 import com.gentics.mesh.graphql.type.field.MicronodeFieldTypeProvider;
 import com.gentics.mesh.graphql.type.field.NodeFieldTypeProvider;
@@ -159,6 +160,9 @@ public class QueryTypeProvider extends AbstractTypeProvider {
 
 	@Inject
 	public PluginTypeProvider pluginProvider;
+
+	@Inject
+	public UserMutations userMutations;
 
 	@Inject
 	public QueryTypeProvider() {
@@ -497,8 +501,18 @@ public class QueryTypeProvider extends AbstractTypeProvider {
 
 		additionalTypes.add(createLinkEnumType());
 
-		GraphQLSchema schema = builder.query(getRootType(context)).build(additionalTypes);
-		return schema;
+		return builder
+			.additionalTypes(additionalTypes)
+			.mutation(createMutations())
+			.query(getRootType(context))
+			.build();
+	}
+
+	private GraphQLObjectType createMutations() {
+		return GraphQLObjectType.newObject()
+			.name("mutations")
+			.field(userMutations.updateUser())
+			.build();
 	}
 
 }
