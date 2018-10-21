@@ -9,6 +9,7 @@ import com.gentics.mesh.core.data.MeshVertex;
 import com.gentics.mesh.core.data.node.NodeContent;
 import com.gentics.mesh.core.data.page.Page;
 import com.gentics.mesh.core.data.page.impl.DynamicStreamPageImpl;
+import com.gentics.mesh.core.data.page.impl.DynamicTransformablePageImpl;
 import com.gentics.mesh.core.data.root.NodeRoot;
 import com.gentics.mesh.core.data.root.RootVertex;
 import com.gentics.mesh.core.data.schema.SchemaContainer;
@@ -37,6 +38,7 @@ import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -62,6 +64,19 @@ public abstract class AbstractTypeProvider {
 	 */
 	public GraphQLArgument createQueryArg() {
 		return newArgument().name("query").description("Elasticsearch query to query the data.").type(GraphQLString).build();
+	}
+
+	/**
+	 * Return the uuids argument.
+	 *
+	 * @return
+	 */
+	public GraphQLArgument createUuidsArg() {
+		return GraphQLArgument.newArgument()
+			.name("uuids")
+			.description("A list of uuids")
+			.type(GraphQLList.list(GraphQLString))
+			.build();
 	}
 
 	/**
@@ -299,13 +314,15 @@ public abstract class AbstractTypeProvider {
 			.name(name)
 			.description(description)
 			.argument(createPagingArgs())
+			.argument(createUuidsArg())
 			.argument(createQueryArg()).type(new GraphQLTypeReference(pageTypeName))
 			.dataFetcher((env) -> {
 				GraphQLContext gc = env.getContext();
 				String query = env.getArgument("query");
 				Map<String, Object> filter = env.getArgument("filter");
-				if (query != null && filter != null) {
-					throw new RuntimeException("Only one way of filtering can be specified. Either by query or by filter");
+				List<String> uuids = env.getArgument("uuids");
+				if (anyExist(query) && anyExist(filter, uuids)) {
+					throw new RuntimeException("Query cannot be used with filter or uuids");
 				}
 				if (query != null) {
 					try {
@@ -315,10 +332,18 @@ public abstract class AbstractTypeProvider {
 					}
 				} else {
 					RootVertex<T> root = rootProvider.apply(gc);
-					if (filterProvider != null && filter != null) {
-						return root.findAll(gc, getPagingInfo(env), filterProvider.createPredicate(filter));
+					Predicate<T> predicate = filterProvider != null && filter != null ? filterProvider.createPredicate(filter) : null;
+					// REVIEW: discuss isempty
+					if (uuids != null && !uuids.isEmpty()) {
+						return new DynamicTransformablePageImpl<>(
+							gc.getUser(),
+							root.findByUuidsRaw(uuids),
+							root.getPersistanceClass(),
+							getPagingInfo(env),
+							predicate
+						);
 					} else {
-						return root.findAll(gc, getPagingInfo(env));
+						return root.findAll(gc, getPagingInfo(env), predicate);
 					}
 				}
 			});
@@ -327,6 +352,23 @@ public abstract class AbstractTypeProvider {
 			fieldDefBuilder.argument(filterProvider.createFilterArgument());
 		}
 		return fieldDefBuilder.build();
+	}
+
+	/**
+	 * Tests if at least one of the provided items is not null
+	 * @param items The items to be tested
+	 * @return
+	 */
+	private boolean anyExist(Object... items) {
+		if (items == null) {
+			return false;
+		}
+		for (Object item : items) {
+			if (item != null) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/**
@@ -349,7 +391,12 @@ public abstract class AbstractTypeProvider {
 
 	protected graphql.schema.GraphQLFieldDefinition.Builder newPagingFieldWithFetcherBuilder(String name, String description,
 		DataFetcher<?> dataFetcher, String pageTypeName) {
-		return newFieldDefinition().name(name).description(description).argument(createPagingArgs()).type(new GraphQLTypeReference(pageTypeName))
+		return newFieldDefinition()
+			.name(name)
+			.description(description)
+			.argument(createPagingArgs())
+			.argument(createUuidsArg())
+			.type(new GraphQLTypeReference(pageTypeName))
 			.dataFetcher(dataFetcher);
 	}
 
@@ -357,7 +404,20 @@ public abstract class AbstractTypeProvider {
 		String referenceTypeName) {
 		return newPagingFieldWithFetcher(name, description, (env) -> {
 			GraphQLContext gc = env.getContext();
-			return rootProvider.apply(gc).findAll(gc, getPagingInfo(env));
+			List<String> uuids = env.getArgument("uuids");
+			// REVIEW: discuss isempty
+			if (uuids != null && !uuids.isEmpty()) {
+				RootVertex<?> root = rootProvider.apply(gc);
+				return new DynamicTransformablePageImpl<>(
+					gc.getUser(),
+					root.findByUuidsRaw(uuids),
+					root.getPersistanceClass(),
+					getPagingInfo(env),
+					null
+				);
+			} else {
+				return rootProvider.apply(gc).findAll(gc, getPagingInfo(env));
+			}
 		}, referenceTypeName);
 	}
 
@@ -415,6 +475,8 @@ public abstract class AbstractTypeProvider {
 		NodeRoot nodeRoot = gc.getProject().getNodeRoot();
 
 		List<String> languageTags = getLanguageArgument(env);
+		List<String> uuids = env.getArgument("uuids");
+
 
 		Stream<NodeContent> contents = nodeRoot.findAllStream(gc)
 			// Now lets try to load the containers for those found nodes - apply the language fallback

@@ -23,12 +23,15 @@ import io.vertx.core.logging.LoggerFactory;
 
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Spliterator;
 import java.util.Stack;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import static com.gentics.mesh.StreamUtil.fromIterable;
+import static com.gentics.mesh.StreamUtil.fromIterator;
 import static com.gentics.mesh.core.data.relationship.GraphPermission.READ_PERM;
 import static com.gentics.mesh.core.rest.error.Errors.error;
 import static io.netty.handler.codec.http.HttpResponseStatus.BAD_REQUEST;
@@ -199,6 +202,23 @@ public interface RootVertex<T extends MeshCoreVertex<? extends RestModel, T>> ex
 			}
 		}
 		return null;
+	}
+
+	/**
+	 * Find the elements with the given uuids.
+	 * @param uuids
+	 *            Uuids of the elements to be located
+	 * @return A stream of the found elements. Elements that could not be located are not returned.
+	 */
+	default Stream<Vertex> findByUuidsRaw(Iterable<String> uuids) {
+		FramedGraph graph = Tx.getActive().getGraph();
+
+		return fromIterable(uuids)
+			.flatMap(uuid -> fromIterator(database().getVertices(getPersistanceClass(), new String[] { MeshVertex.UUID_KEY }, new String[] { uuid })));
+	}
+
+	default Stream<Vertex> findByUuidsRaw(Iterable<String> uuids) {
+
 	}
 
 	/**

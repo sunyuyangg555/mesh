@@ -104,7 +104,7 @@ public class DynamicTransformablePageImpl<T extends TransformableElement<? exten
 
 	/**
 	 * Create a new dynamic page.
-	 * 
+	 *
 	 * @param user
 	 *            User to check permissions against
 	 * @param traversal
@@ -120,6 +120,25 @@ public class DynamicTransformablePageImpl<T extends TransformableElement<? exten
 		Class<? extends T> clazz) {
 		this(user, pagingInfo, null, true);
 		init(clazz, traversal, perm);
+	}
+
+	/**
+	 * Creates a new dynamic page.
+	 * @param user
+	 *            User to check permissions against
+	 * @param stream
+	 *            Stream which yields the items
+	 * @param clazz
+	 *            Element class used to reframe the found elements
+	 * @param pagingInfo
+	 *            Paging settings
+	 * @param extraFilter
+	 *            Optional extra filter to filter by
+	 */
+	public DynamicTransformablePageImpl(User user, Stream<Vertex> stream, Class<? extends T> clazz, PagingParameters pagingInfo, Predicate<T> extraFilter) {
+		this(user, pagingInfo, extraFilter, true);
+		// REVIEW: Published Perm?
+		applyPagingAndPermChecks(stream, clazz, READ_PERM);
 	}
 
 	private void init(Class<? extends T> clazz, VertexTraversal<?, ?, ?> traversal, GraphPermission perm) {

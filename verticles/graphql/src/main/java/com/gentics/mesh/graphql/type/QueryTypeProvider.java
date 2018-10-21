@@ -293,6 +293,7 @@ public class QueryTypeProvider extends AbstractTypeProvider {
 		root.field(newFieldDefinition().name("nodes")
 			.description("Load a page of nodes via the regular nodes list or via a search.")
 			.argument(createPagingArgs()).argument(createQueryArg()).argument(createLanguageTagArg(true))
+			.argument(createUuidsArg())
 			.argument(NodeFilter.filter(context).createFilterArgument())
 			.type(new GraphQLTypeReference(NODE_PAGE_TYPE_NAME)).dataFetcher((env) -> {
 				GraphQLContext gc = env.getContext();
