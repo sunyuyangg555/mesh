@@ -25,6 +25,7 @@ import static com.gentics.mesh.graphql.type.TagTypeProvider.TAG_PAGE_TYPE_NAME;
 import static com.gentics.mesh.graphql.type.TagTypeProvider.TAG_TYPE_NAME;
 import static com.gentics.mesh.graphql.type.UserTypeProvider.USER_PAGE_TYPE_NAME;
 import static com.gentics.mesh.graphql.type.UserTypeProvider.USER_TYPE_NAME;
+import static com.gentics.mesh.graphql.type.scalar.AnyType.createAnyScalar;
 import static graphql.Scalars.GraphQLBoolean;
 import static graphql.Scalars.GraphQLLong;
 import static graphql.schema.GraphQLFieldDefinition.newFieldDefinition;
@@ -33,6 +34,7 @@ import static graphql.schema.GraphQLObjectType.newObject;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import javax.inject.Inject;
@@ -71,6 +73,7 @@ import graphql.schema.GraphQLObjectType.Builder;
 import graphql.schema.GraphQLSchema;
 import graphql.schema.GraphQLType;
 import graphql.schema.GraphQLTypeReference;
+import io.vertx.core.json.JsonObject;
 
 /**
  * The {@link QueryTypeProvider} provides as the name suggests the query type for the GraphQL schema. This type is the starting point for all GraphQL queries.
@@ -292,12 +295,27 @@ public class QueryTypeProvider extends AbstractTypeProvider {
 		// .nodes
 		root.field(newFieldDefinition().name("nodes")
 			.description("Load a page of nodes via the regular nodes list or via a search.")
-			.argument(createPagingArgs()).argument(createQueryArg()).argument(createLanguageTagArg(true))
+			.argument(createPagingArgs())
+			.argument(createQueryArg())
+			.argument(createLanguageTagArg(true))
 			.argument(NodeFilter.filter(context).createFilterArgument())
 			.type(new GraphQLTypeReference(NODE_PAGE_TYPE_NAME)).dataFetcher((env) -> {
 				GraphQLContext gc = env.getContext();
 				PagingParameters pagingInfo = getPagingInfo(env);
-				String query = env.getArgument("query");
+
+				String query;
+				Object queryJson = env.getArgument("queryJson");
+				if (queryJson != null) {
+					if (queryJson instanceof String) {
+						query = (String) queryJson;
+					} else if (queryJson instanceof Map) {
+						query = new JsonObject((Map<String, Object>)queryJson).encode();
+					} else {
+						throw new RuntimeException("Invalid type in queryJson argument");
+					}
+				} else {
+					query = env.getArgument("query");
+				}
 
 				List<String> languageTags = getLanguageArgument(env);
 				// Check whether we need to load the nodes via a query or regular project-wide paging
@@ -496,9 +514,12 @@ public class QueryTypeProvider extends AbstractTypeProvider {
 		additionalTypes.add(fieldDefProvider.createBinaryFieldType());
 
 		additionalTypes.add(createLinkEnumType());
+		additionalTypes.add(createAnyScalar());
 
 		GraphQLSchema schema = builder.query(getRootType(context)).build(additionalTypes);
 		return schema;
 	}
+
+
 
 }

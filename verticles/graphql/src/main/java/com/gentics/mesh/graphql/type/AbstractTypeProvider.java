@@ -41,6 +41,7 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import static com.gentics.mesh.core.data.relationship.GraphPermission.READ_PERM;
+import static com.gentics.mesh.graphql.type.scalar.AnyType.SCALAR_ANY_NAME;
 import static graphql.Scalars.GraphQLLong;
 import static graphql.Scalars.GraphQLString;
 import static graphql.schema.GraphQLArgument.newArgument;
@@ -60,8 +61,11 @@ public abstract class AbstractTypeProvider {
 	 * 
 	 * @return
 	 */
-	public GraphQLArgument createQueryArg() {
-		return newArgument().name("query").description("Elasticsearch query to query the data.").type(GraphQLString).build();
+	public List<GraphQLArgument> createQueryArg() {
+		return Arrays.asList(
+			newArgument().name("query").description("Elasticsearch query to query the data.").type(GraphQLString).build(),
+			newArgument().name("queryJson").description("Elasticsearch query to query the data.").type(new GraphQLTypeReference(SCALAR_ANY_NAME)).build()
+		);
 	}
 
 	/**
