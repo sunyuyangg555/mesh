@@ -58,6 +58,7 @@ import com.gentics.mesh.core.rest.common.NameUuidReference;
 import com.gentics.mesh.core.rest.schema.FieldSchemaContainer;
 import com.gentics.mesh.dagger.DB;
 import com.gentics.mesh.dagger.MeshInternal;
+import com.gentics.mesh.graphdb.MeshTx;
 import com.gentics.mesh.graphdb.spi.Database;
 import com.gentics.mesh.parameter.GenericParameters;
 import com.gentics.mesh.parameter.PagingParameters;
@@ -518,7 +519,9 @@ public class BranchImpl extends AbstractMeshCoreVertex<BranchResponse, Branch> i
 	public void onCreated() {
 		super.onCreated();
 		// TODO make this configurable via query parameter. It should be possible to postpone the migration.
-		Mesh.vertx().eventBus().send(JOB_WORKER_ADDRESS, null);
+		try (MeshTx tx = DB.get().meshTx()) {
+			tx.afterCommit(() -> Mesh.vertx().eventBus().send(JOB_WORKER_ADDRESS, null));
+		}
 	}
 
 	@Override

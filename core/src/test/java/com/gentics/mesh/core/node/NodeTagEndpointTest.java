@@ -21,6 +21,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
+import com.gentics.mesh.core.rest.admin.migration.MigrationStatus;
+import com.gentics.mesh.core.rest.common.ListResponse;
+import com.gentics.mesh.core.rest.group.GroupResponse;
+import com.gentics.mesh.core.rest.user.UserResponse;
+import io.reactivex.Observable;
+import io.reactivex.Single;
 import org.junit.Test;
 
 import com.gentics.mesh.FieldUtil;
@@ -184,20 +190,37 @@ public class NodeTagEndpointTest extends AbstractMeshTest {
 		}
 	}
 
+	private void fixPermissions() {
+		GroupResponse adminGroup = client().findGroups()
+			.toSingle()
+			.to(this::listObservable)
+			.filter(group -> group.getName().equals("admin"))
+			.firstOrError()
+			.blockingGet();
+
+		UserResponse user = client().me().toSingle().blockingGet();
+		client().addUserToGroup(adminGroup.getUuid(), user.getUuid()).toSingle().blockingGet();
+	}
+
+	private <T> Observable<T> listObservable(Single<? extends ListResponse<T>> upstream) {
+		return upstream.flatMapObservable(response -> Observable.fromIterable(response.getData()));
+	}
+
+
 	@Test
 	public void testTaggingAcrossMultipleBranches() throws Exception {
 		String branchOne = "BranchV1";
 		String branchTwo = "BranchV2";
 
+		fixPermissions();
+
 		// 1. Create branch v1
-		CountDownLatch latch = TestUtils.latchForMigrationCompleted(client());
-		try (Tx tx = tx()) {
+		waitForJobs(() -> {
 			BranchCreateRequest request = new BranchCreateRequest();
 			request.setName(branchOne);
 			BranchResponse branchResponse = call(() -> client().createBranch(PROJECT_NAME, request));
 			assertThat(branchResponse).as("Branch Response").isNotNull().hasName(branchOne).isActive().isNotMigrated();
-		}
-		failingLatch(latch);
+		}, MigrationStatus.COMPLETED, 1);
 
 		// 2. Tag a node in branch v1 with tag "red"
 		try (Tx tx = tx()) {
@@ -231,15 +254,15 @@ public class NodeTagEndpointTest extends AbstractMeshTest {
 		}
 
 		// 3. Create branch v2
-		latch = TestUtils.latchForMigrationCompleted(client());
-		try (Tx tx = tx()) {
-			BranchCreateRequest request = new BranchCreateRequest();
-			request.setName(branchTwo);
-			BranchResponse branchResponse = call(() -> client().createBranch(PROJECT_NAME, request));
-			assertThat(branchResponse).as("Branch Response").isNotNull().hasName(branchTwo).isActive().isNotMigrated();
-		}
+		waitForJobs(() -> {
+			try (Tx tx = tx()) {
+				BranchCreateRequest request = new BranchCreateRequest();
+				request.setName(branchTwo);
+				BranchResponse branchResponse = call(() -> client().createBranch(PROJECT_NAME, request));
+				assertThat(branchResponse).as("Branch Response").isNotNull().hasName(branchTwo).isActive().isNotMigrated();
+			}
+		}, MigrationStatus.COMPLETED, 1);
 
-		failingLatch(latch);
 		// 4. Tag a node in branch v2 with tag "blue"
 		try (Tx tx = tx()) {
 			Node node = content();

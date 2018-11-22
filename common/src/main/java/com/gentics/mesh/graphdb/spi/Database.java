@@ -12,6 +12,7 @@ import com.gentics.mesh.core.data.MeshVertex;
 import com.gentics.mesh.core.rest.admin.cluster.ClusterStatusResponse;
 import com.gentics.mesh.core.rest.error.GenericRestException;
 import com.gentics.mesh.etc.config.MeshOptions;
+import com.gentics.mesh.graphdb.MeshTx;
 import com.gentics.mesh.graphdb.model.MeshElement;
 import com.syncleus.ferma.EdgeFrame;
 import com.syncleus.ferma.ElementFrame;
@@ -66,6 +67,10 @@ public interface Database extends TxFactory {
 	 * Remove all edges and all vertices from the graph.
 	 */
 	void clear();
+
+	default MeshTx meshTx() {
+		return (MeshTx) tx();
+	}
 
 	/**
 	 * Asynchronously execute the given handler within a transaction and return the completable.

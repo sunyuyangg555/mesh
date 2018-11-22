@@ -8,8 +8,12 @@ import com.syncleus.ferma.tx.Tx;
 import com.syncleus.ferma.typeresolvers.TypeResolver;
 import com.tinkerpop.blueprints.impls.orient.OrientGraphFactory;
 
-public class OrientDBTransaction extends AbstractTx<FramedTransactionalGraph> {
+import java.util.ArrayList;
+import java.util.List;
+
+public class OrientDBTransaction extends AbstractTx<FramedTransactionalGraph> implements MeshTx {
 	private boolean isWrapped = false;
+	private ThreadLocal<List<Runnable>> tasks = new ThreadLocal<>();
 
 	public OrientDBTransaction(OrientGraphFactory factory, TypeResolver typeResolver) {
 
@@ -30,10 +34,16 @@ public class OrientDBTransaction extends AbstractTx<FramedTransactionalGraph> {
 			try {
 				if (isSuccess()) {
 					commit();
+					List<Runnable> ts = tasks.get();
+					if (ts != null) {
+						ts.forEach(Runnable::run);
+						tasks.remove();
+					}
 				} else {
 					System.out.println("Rolling back!");
 					new Throwable().printStackTrace();
 					rollback();
+					tasks.remove();
 				}
 			} catch (OConcurrentModificationException e) {
 				throw e;
@@ -47,5 +57,15 @@ public class OrientDBTransaction extends AbstractTx<FramedTransactionalGraph> {
 	@Override
 	public boolean isSuccess() {
 		return super.isSuccess();
+	}
+
+	@Override
+	public void afterCommit(Runnable task) {
+		List<Runnable> ts = tasks.get();
+		if (ts == null) {
+			ts = new ArrayList<>();
+			tasks.set(ts);
+		}
+		ts.add(task);
 	}
 }

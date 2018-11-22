@@ -19,7 +19,9 @@ import com.gentics.mesh.core.data.relationship.GraphPermission;
 import com.gentics.mesh.core.rest.common.GenericRestResponse;
 import com.gentics.mesh.core.rest.common.PermissionInfo;
 import com.gentics.mesh.core.rest.common.RestModel;
+import com.gentics.mesh.dagger.DB;
 import com.gentics.mesh.dagger.MeshInternal;
+import com.gentics.mesh.graphdb.MeshTx;
 import com.gentics.mesh.madlmigration.TraversalResult;
 import com.gentics.mesh.parameter.value.FieldsSet;
 
@@ -150,7 +152,9 @@ public abstract class AbstractMeshCoreVertex<T extends RestModel, R extends Mesh
 			}
 			json.put("origin", Mesh.mesh().getOptions().getNodeName());
 			json.put("uuid", getUuid());
-			Mesh.vertx().eventBus().publish(address, json);
+			try (MeshTx tx = DB.get().meshTx()) {
+				tx.afterCommit(() -> Mesh.vertx().eventBus().publish(address, json));
+			}
 			if (log.isDebugEnabled()) {
 				log.debug("Created event sent {" + address + "}");
 			}

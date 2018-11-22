@@ -15,6 +15,8 @@ import com.gentics.mesh.core.data.job.Job;
 import com.gentics.mesh.core.endpoint.migration.MigrationStatusHandler;
 import com.gentics.mesh.core.rest.admin.migration.MigrationStatus;
 import com.gentics.mesh.core.rest.admin.migration.MigrationType;
+import com.gentics.mesh.dagger.DB;
+import com.gentics.mesh.graphdb.MeshTx;
 import com.syncleus.ferma.tx.Tx;
 
 import io.vertx.core.Vertx;
@@ -91,7 +93,9 @@ public class MigrationStatusHandlerImpl implements MigrationStatusHandler {
 		setStatus(COMPLETED);
 		log.info("Migration completed without errors.");
 		JsonObject result = new JsonObject().put("type", "completed");
-		vertx.eventBus().publish(MESH_MIGRATION, result);
+		try (MeshTx tx = DB.get().meshTx()) {
+			tx.afterCommit(() -> vertx.eventBus().publish(MESH_MIGRATION, result));
+		}
 		job.setStopTimestamp();
 		commit();
 		return this;
@@ -111,8 +115,9 @@ public class MigrationStatusHandlerImpl implements MigrationStatusHandler {
 	public MigrationStatusHandler error(Throwable error, String failureMessage) {
 		setStatus(FAILED);
 		log.error("Error handling migration", error);
-
-		vertx.eventBus().publish(MESH_MIGRATION, new JsonObject().put("type", status.name()));
+		try (MeshTx tx = DB.get().meshTx()) {
+			tx.afterCommit(() -> vertx.eventBus().publish(MESH_MIGRATION, new JsonObject().put("type", status.name())));
+		}
 		job.setStopTimestamp();
 		job.setError(error);
 		commit();
