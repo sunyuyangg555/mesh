@@ -86,8 +86,9 @@ public interface Database extends TxFactory {
 			Mesh.vertx().executeBlocking(bc -> {
 				try (Tx tx = tx()) {
 					txHandler.handle();
+					tx.success();
 					bc.complete();
-				} catch (Exception e) {
+				} catch (Throwable e) {
 					if (log.isTraceEnabled()) {
 						log.trace("Error while handling no-transaction.", e);
 					}
@@ -123,19 +124,24 @@ public interface Database extends TxFactory {
 				try (Tx tx = tx()) {
 					Single<T> result = trxHandler.handle();
 					if (result == null) {
+						tx.success();
 						bc.complete();
 					} else {
 						try {
 							T ele = result.timeout(40, TimeUnit.SECONDS).blockingGet();
+							tx.success();
 							bc.complete(ele);
-						} catch (Exception e2) {
-							if (e2 instanceof TimeoutException) {
-								log.error("Timeout while processing result of transaction handler.", e2);
-								log.error("Calling transaction stacktrace.", reference.get());
-								bc.fail(reference.get());
+						} catch (Throwable e2) {
+							if (e2 instanceof RuntimeException) {
+								if (e2.getCause() instanceof TimeoutException) {
+									log.error("Timeout while processing result of transaction handler.", e2);
+									log.error("Calling transaction stacktrace.", reference.get());
+									bc.fail(reference.get());
+								}
 							} else {
 								throw e2;
 							}
+							tx.failure();
 						}
 					}
 				} catch (Exception e) {
@@ -175,12 +181,15 @@ public interface Database extends TxFactory {
 					Single<T> result = trxHandler.handle(tx);
 					if (result == null) {
 						bc.complete();
+						tx.success();
 					} else {
 						try {
 							T ele = result.timeout(40, TimeUnit.SECONDS).blockingGet();
+							tx.success();
 							bc.complete(ele);
-						} catch (Exception e2) {
-							if (e2 instanceof TimeoutException) {
+						} catch (Throwable e2) {
+							tx.failure();
+							if (e2.getCause() instanceof TimeoutException) {
 								log.error("Timeout while processing result of transaction handler.", e2);
 								log.error("Calling transaction stacktrace.", reference.get());
 								bc.fail(reference.get());

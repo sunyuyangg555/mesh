@@ -31,6 +31,8 @@ public class OrientDBTransaction extends AbstractTx<FramedTransactionalGraph> {
 				if (isSuccess()) {
 					commit();
 				} else {
+					System.out.println("Rolling back!");
+					new Throwable().printStackTrace();
 					rollback();
 				}
 			} catch (OConcurrentModificationException e) {
@@ -40,5 +42,10 @@ public class OrientDBTransaction extends AbstractTx<FramedTransactionalGraph> {
 				Tx.setActive(null);
 			}
 		}
+	}
+
+	@Override
+	public boolean isSuccess() {
+		return super.isSuccess();
 	}
 }
