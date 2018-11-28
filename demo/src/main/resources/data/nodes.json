@@ -160,15 +160,16 @@
         
       ],
       "schema": "vehicleImage",
+      "credit": "Photo by Franck V. on Unsplash",
       "bin": {
         "path": "images\/delorean-dmc-12.jpg",
         "filename": "delorean-dmc-12.jpg",
         "contentType": "image\/jpeg",
-        "width": 1920,
-        "height": 1080,
+        "width": 1976,
+        "height": 1273,
         "fpx": 0.2,
         "fpy": 0.2,
-        "sha512sum": "d3ce1d2708780cafa1bfff01996f43c2cfef2bb0139b54fa3f8e0aad7603b1685998d93715a38781416f16b3351b5e8cc1efa68ca25bd4a6fb09a032524711e8"
+        "sha512sum": "454a2428fbb66c0ea5aca23e38c2f96208a9f13e9f99ae209b76ae39c2189158feb2c4d76cd1558d00157b86832da486bbf507ba00e6bd3d520ea41f587088dd"
       }
     },
     {
