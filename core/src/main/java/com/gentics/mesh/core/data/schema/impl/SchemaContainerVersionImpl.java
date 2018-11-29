@@ -173,11 +173,11 @@ public class SchemaContainerVersionImpl extends
 	}
 
 	@Override
-	public void delete(BulkActionContext context) {
+	public void delete(BulkActionContext bc) {
 		// Delete change
 		SchemaChange<?> change = getNextChange();
 		if (change != null) {
-			change.remove();
+			change.delete(bc);
 		}
 		// Delete referenced jobs
 		for (Job job : referencedJobsViaFrom()) {

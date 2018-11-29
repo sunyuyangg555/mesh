@@ -325,15 +325,28 @@ public class MicroschemaEndpointTest extends AbstractMeshTest implements BasicRe
 	@Test
 	@Override
 	public void testDeleteByUUID() throws Exception {
-		String uuid = db().tx(() -> microschemaContainers().get("vcard").getUuid());
+		String uuid = tx(() -> microschemaContainers().get("vcard").getUuid());
 		call(() -> client().deleteMicroschema(uuid));
-
-		// schema_delete_still_in_use
 
 		try (Tx tx = tx()) {
 			MicroschemaContainer reloaded = boot().microschemaContainerRoot().findByUuid(uuid);
 			assertNull("The microschema should have been deleted.", reloaded);
 		}
+	}
+
+	@Test
+	public void testDeleteWithChanges() {
+
+		String json = tx(() -> microschemaContainers().get("vcard").getLatestVersion().getJson());
+		String uuid = tx(() -> microschemaContainers().get("vcard").getUuid());
+
+		MicroschemaUpdateRequest request = JsonUtil.readValue(json, MicroschemaUpdateRequest.class);
+		request.setDescription("Updated microschema for a vcard");
+		call(() -> client().updateMicroschema(uuid, request));
+
+		// Now delete the schema
+		call(() -> client().deleteMicroschema(uuid));
+
 	}
 
 	/**

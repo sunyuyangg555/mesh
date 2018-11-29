@@ -161,11 +161,11 @@ public class MicroschemaContainerVersionImpl extends
 	}
 
 	@Override
-	public void delete(BulkActionContext context) {
+	public void delete(BulkActionContext bc) {
 		// Delete change
 		SchemaChange<?> change = getNextChange();
 		if (change != null) {
-			change.delete(context);
+			change.delete(bc);
 		}
 		// Delete referenced jobs
 		for (Job job : referencedJobsViaFrom()) {
