@@ -32,6 +32,7 @@ public interface AdminClientMethods {
 	 */
 	MeshRequest<GenericMessageResponse> invokeBackup();
 
+	
 	/**
 	 * Invoke a graph database export.
 	 * 
@@ -49,6 +50,12 @@ public interface AdminClientMethods {
 	MeshRequest<GenericMessageResponse> invokeRestore();
 
 	/**
+	 * Invoke a graph database check.
+	 * @return
+	 */
+	MeshRequest<GenericMessageResponse> checkDatabase();
+
+	/**
 	 * Invoke a graph database import.
 	 * 
 	 * @return
@@ -58,7 +65,7 @@ public interface AdminClientMethods {
 	MeshRequest<GenericMessageResponse> invokeImport();
 
 	/**
-	 * Invoke a consistency check of the graph database.
+	 * Invoke a consistency check of the stored data in the graph database.
 	 * 
 	 * @return
 	 */

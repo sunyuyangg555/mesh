@@ -32,7 +32,8 @@ public class AdminEndpoint extends AbstractInternalEndpoint {
 	private PluginHandler pluginHandler;
 
 	@Inject
-	public AdminEndpoint(MeshAuthChain chain, AdminHandler adminHandler, JobHandler jobHandler, ConsistencyCheckHandler consistencyHandler, PluginHandler pluginHandler) {
+	public AdminEndpoint(MeshAuthChain chain, AdminHandler adminHandler, JobHandler jobHandler, ConsistencyCheckHandler consistencyHandler,
+		PluginHandler pluginHandler) {
 		super("admin", chain);
 		this.adminHandler = adminHandler;
 		this.jobHandler = jobHandler;
@@ -58,6 +59,7 @@ public class AdminEndpoint extends AbstractInternalEndpoint {
 
 		addBackupHandler();
 		addRestoreHandler();
+		addCheckDatabaseHandler();
 		addClusterStatusHandler();
 		addConsistencyCheckHandler();
 		// addImportHandler();
@@ -135,7 +137,8 @@ public class AdminEndpoint extends AbstractInternalEndpoint {
 		InternalEndpointRoute endpoint = createRoute();
 		endpoint.path("/consistency/check");
 		endpoint.method(GET);
-		endpoint.description("Invokes a consistency check of the graph database without attempting to repairing the found issues. A list of found issues will be returned.");
+		endpoint.description(
+			"Invokes a consistency check of the graph database without attempting to repairing the found issues. A list of found issues will be returned.");
 		endpoint.produces(APPLICATION_JSON);
 		endpoint.exampleResponse(OK, adminExamples.createConsistencyCheckResponse(false), "Consistency check report");
 		endpoint.handler(rc -> {
@@ -145,7 +148,8 @@ public class AdminEndpoint extends AbstractInternalEndpoint {
 		InternalEndpointRoute repairEndpoint = createRoute();
 		repairEndpoint.path("/consistency/repair");
 		repairEndpoint.method(POST);
-		repairEndpoint.description("Invokes a consistency check and repair of the graph database and returns a list of found issues and their state.");
+		repairEndpoint
+			.description("Invokes a consistency check and repair of the graph database and returns a list of found issues and their state.");
 		repairEndpoint.produces(APPLICATION_JSON);
 		repairEndpoint.exampleResponse(OK, adminExamples.createConsistencyCheckResponse(true), "Consistency check and repair report");
 		repairEndpoint.handler(rc -> {
@@ -188,6 +192,19 @@ public class AdminEndpoint extends AbstractInternalEndpoint {
 		endpoint.method(POST);
 		endpoint.handler(rc -> {
 			adminHandler.handleRestore(wrap(rc));
+		});
+	}
+
+	private void addCheckDatabaseHandler() {
+		InternalEndpointRoute endpoint = createRoute();
+		endpoint.path("/graphdb/check");
+		endpoint.description(
+			"Invoke a graph database check.");
+		endpoint.produces(APPLICATION_JSON);
+		endpoint.exampleResponse(OK, miscExamples.createMessageResponse(), "Database check command was invoked.");
+		endpoint.method(POST);
+		endpoint.handler(rc -> {
+			adminHandler.handleDatabaseCheck(wrap(rc));
 		});
 	}
 

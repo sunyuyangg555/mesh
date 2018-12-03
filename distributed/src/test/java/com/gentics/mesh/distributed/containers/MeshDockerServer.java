@@ -30,13 +30,13 @@ import org.testcontainers.utility.TestEnvironment;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.gentics.mesh.OptionsLoader;
+import com.gentics.mesh.crypto.KeyStoreHelper;
 import com.gentics.mesh.etc.config.ClusterOptions;
 import com.gentics.mesh.etc.config.MeshOptions;
 import com.gentics.mesh.etc.config.search.ElasticSearchOptions;
 import com.gentics.mesh.rest.client.MeshRestClient;
 import com.gentics.mesh.test.docker.NoWaitStrategy;
 import com.gentics.mesh.test.docker.StartupLatchingConsumer;
-import com.gentics.mesh.util.UUIDUtil;
 import com.github.dockerjava.api.command.ExecCreateCmdResponse;
 
 import io.vertx.core.Vertx;
@@ -221,6 +221,13 @@ public class MeshDockerServer extends GenericContainer<MeshDockerServer> {
 		try {
 			File projectRoot = new File("..");
 
+			File keystoreFile = new File("target/dockerKeystore.jcks");
+			// Ensure the keystore file exists
+			if (!keystoreFile.exists()) {
+				KeyStoreHelper.gen(keystoreFile.getAbsolutePath(), "finger");
+			}
+			dockerImage.withFileFromFile("/keystore.jceks", keystoreFile);
+
 			// Locate all class folders
 			List<Path> classFolders = Files.walk(projectRoot.toPath()).filter(file -> "classes".equals(file.toFile().getName()))
 				.collect(Collectors.toList());
@@ -268,16 +275,16 @@ public class MeshDockerServer extends GenericContainer<MeshDockerServer> {
 			dockerImage.withFileFromString("/mesh.yml", generateMeshYML(enableClustering));
 
 			return dockerImage;
-		} catch (IOException e) {
+		} catch (Exception e) {
 			throw new RuntimeException(e);
 		}
 	}
 
 	private static String generateMeshYML(boolean enableClustering) throws JsonProcessingException {
 		MeshOptions options = new MeshOptions();
+		options.getAuthenticationOptions().setKeystorePassword("finger");
 		options.getClusterOptions().setEnabled(enableClustering);
 		options.getClusterOptions().setVertxPort(8600);
-		options.getAuthenticationOptions().setKeystorePassword(UUIDUtil.randomUUID());
 		return OptionsLoader.getYAMLMapper().writeValueAsString(options);
 	}
 

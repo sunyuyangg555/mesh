@@ -779,7 +779,7 @@ public class MeshRestHttpClientImpl extends AbstractMeshRestHttpClient {
 		if (!path.startsWith("/")) {
 			throw new RuntimeException("The path {" + path + "} must start with a slash");
 		}
-		return webrootCreate(projectName, path.split("/"), nodeCreateRequest , parameters);
+		return webrootCreate(projectName, path.split("/"), nodeCreateRequest, parameters);
 	}
 
 	@Override
@@ -1004,6 +1004,11 @@ public class MeshRestHttpClientImpl extends AbstractMeshRestHttpClient {
 	@Override
 	public MeshRequest<GenericMessageResponse> invokeRestore() {
 		return prepareRequest(POST, "/admin/graphdb/restore", GenericMessageResponse.class);
+	}
+
+	@Override
+	public MeshRequest<GenericMessageResponse> checkDatabase() {
+		return prepareRequest(POST, "/admin/graphdb/check", GenericMessageResponse.class);
 	}
 
 	@Override
@@ -1318,7 +1323,7 @@ public class MeshRestHttpClientImpl extends AbstractMeshRestHttpClient {
 		Objects.requireNonNull(branchUuid, "branchUuid must not be null");
 		Objects.requireNonNull(tagUuid, "tagUuid must not be null");
 		return prepareRequest(POST, "/" + encodeSegment(projectName) + "/branches/" + branchUuid + "/tags/" + tagUuid,
-				BranchResponse.class);
+			BranchResponse.class);
 	}
 
 	@Override
@@ -1334,7 +1339,8 @@ public class MeshRestHttpClientImpl extends AbstractMeshRestHttpClient {
 	public MeshRequest<TagListResponse> findTagsForBranch(String projectName, String branchUuid, ParameterProvider... parameters) {
 		Objects.requireNonNull(projectName, "projectName must not be null");
 		Objects.requireNonNull(branchUuid, "branchUuid must not be null");
-		return prepareRequest(GET, "/" + encodeSegment(projectName) + "/branches/" + branchUuid + "/tags" + getQuery(parameters), TagListResponse.class);
+		return prepareRequest(GET, "/" + encodeSegment(projectName) + "/branches/" + branchUuid + "/tags" + getQuery(parameters),
+			TagListResponse.class);
 	}
 
 	@Override

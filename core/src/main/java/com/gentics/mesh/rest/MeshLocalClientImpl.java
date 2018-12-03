@@ -1472,6 +1472,11 @@ public class MeshLocalClientImpl implements MeshRestClient {
 	}
 
 	@Override
+	public MeshRequest<GenericMessageResponse> checkDatabase() {
+		return null;
+	}
+
+	@Override
 	public MeshRequest<ConsistencyCheckResponse> repairConsistency() {
 		return null;
 	}

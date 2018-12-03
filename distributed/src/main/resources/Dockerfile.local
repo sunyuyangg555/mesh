@@ -13,6 +13,7 @@ ADD bin /mesh/bin
 USER root
 RUN mkdir /data && mkdir /config && ln -s /data /mesh/data && chown mesh: /data 
 ADD mesh.yml /config/mesh.yml
+ADD keystore.jceks /config/keystore.jceks
 RUN chown mesh: /config -R && ln -s /config /mesh/config
 
 USER mesh

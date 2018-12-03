@@ -562,4 +562,12 @@ public interface Database extends TxFactory {
 	 */
 	void removeVertexIndex(String indexName, Class<? extends VertexFrame> clazz);
 
+	/**
+	 * Invoke a database check.
+	 * 
+	 * @param repair
+	 *            Repair flag
+	 */
+	void checkDatabase(boolean repair);
+
 }

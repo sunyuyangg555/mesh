@@ -4,6 +4,7 @@ import static com.gentics.mesh.MeshEnv.CONFIG_FOLDERNAME;
 import static com.gentics.mesh.core.rest.error.Errors.error;
 import static com.gentics.mesh.graphdb.FieldTypeMapper.toSubType;
 import static com.gentics.mesh.graphdb.FieldTypeMapper.toType;
+import static io.netty.handler.codec.http.HttpResponseStatus.BAD_REQUEST;
 import static io.netty.handler.codec.http.HttpResponseStatus.INTERNAL_SERVER_ERROR;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
@@ -22,6 +23,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -66,10 +68,13 @@ import com.orientechnologies.orient.core.metadata.schema.OClass;
 import com.orientechnologies.orient.core.metadata.schema.OType;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 import com.orientechnologies.orient.core.storage.ORecordDuplicatedException;
+import com.orientechnologies.orient.core.storage.OStorage;
+import com.orientechnologies.orient.core.storage.impl.local.OAbstractPaginatedStorage;
 import com.orientechnologies.orient.server.OServer;
 import com.orientechnologies.orient.server.OServerMain;
 import com.orientechnologies.orient.server.distributed.ODistributedServerManager;
 import com.orientechnologies.orient.server.distributed.ODistributedServerManager.DB_STATUS;
+import com.orientechnologies.orient.server.distributed.impl.ODistributedStorage;
 import com.orientechnologies.orient.server.hazelcast.OHazelcastPlugin;
 import com.orientechnologies.orient.server.plugin.OServerPluginManager;
 import com.syncleus.ferma.EdgeFrame;
@@ -86,6 +91,7 @@ import com.tinkerpop.blueprints.Element;
 import com.tinkerpop.blueprints.Graph;
 import com.tinkerpop.blueprints.TransactionalGraph;
 import com.tinkerpop.blueprints.Vertex;
+import com.tinkerpop.blueprints.impls.orient.OGraphRepair;
 import com.tinkerpop.blueprints.impls.orient.OrientBaseGraph;
 import com.tinkerpop.blueprints.impls.orient.OrientEdgeType;
 import com.tinkerpop.blueprints.impls.orient.OrientElement;
@@ -974,6 +980,31 @@ public class OrientDBDatabase extends AbstractDatabase {
 			}
 		}
 		throw new RuntimeException("Retry limit {" + maxRetry + "} for trx exceeded");
+	}
+
+	@Override
+	public void checkDatabase(boolean repair) {
+		boolean verbose = true;
+		ODatabaseDocumentTx db = factory.getDatabase();
+		try {
+			if (repair) {
+				final Map<String, List<String>> repairOptions = new HashMap<>();
+				new OGraphRepair().check(OrientGraphFactory.getNoTxGraphImplFactory().getGraph(db), text -> {
+					System.out.println(text);
+				}, repairOptions);
+			} else {
+				OStorage storage = db.getStorage();
+				if (storage instanceof OAbstractPaginatedStorage) {
+					((OAbstractPaginatedStorage) storage).check(verbose, text -> {
+						System.out.println(text);
+					});
+				} else {
+					throw error(BAD_REQUEST, "admin_check_database_not_supported_cluster_mode");
+				}
+			}
+		} finally {
+			db.close();
+		}
 	}
 
 	@Override

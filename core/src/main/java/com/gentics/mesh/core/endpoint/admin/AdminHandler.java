@@ -23,6 +23,7 @@ import com.gentics.mesh.core.cache.PermissionStore;
 import com.gentics.mesh.core.data.root.impl.MeshRootImpl;
 import com.gentics.mesh.core.endpoint.handler.AbstractHandler;
 import com.gentics.mesh.core.rest.admin.status.MeshStatusResponse;
+import com.gentics.mesh.core.rest.common.GenericMessageResponse;
 import com.gentics.mesh.etc.config.MeshOptions;
 import com.gentics.mesh.graphdb.spi.Database;
 import com.gentics.mesh.router.RouterStorage;
@@ -162,6 +163,25 @@ public class AdminHandler extends AbstractHandler {
 				throw error(BAD_REQUEST, "error_cluster_status_only_aviable_in_cluster_mode");
 			}
 		}).subscribe(model -> ac.send(model, OK), ac::fail);
+	}
+
+	public void handleDatabaseCheck(InternalActionContext ac) {
+		vertx.executeBlocking(bc -> {
+			try {
+				db.checkDatabase(false);
+				bc.complete();
+			} catch (Exception e) {
+				bc.fail(e);
+			}
+		}, rh -> {
+			GenericMessageResponse status = new GenericMessageResponse();
+			if (rh.succeeded()) {
+				ac.send(status, OK);
+			} else {
+				log.error("Error while checking database", rh.cause());
+				ac.send(status, INTERNAL_SERVER_ERROR);
+			}
+		});
 	}
 
 }
