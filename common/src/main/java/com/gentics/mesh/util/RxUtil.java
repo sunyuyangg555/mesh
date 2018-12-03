@@ -4,12 +4,14 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
-import java.util.function.Function;
 
+import com.gentics.mesh.graphdb.spi.Database;
 import io.reactivex.Completable;
 import io.reactivex.Flowable;
 import io.reactivex.Observable;
 import io.reactivex.Single;
+import io.reactivex.functions.Action;
+import io.reactivex.functions.Function;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.file.AsyncFile;
 import io.vertx.core.logging.Logger;
@@ -91,4 +93,18 @@ public final class RxUtil {
 			.doOnCancel(file::close);
 	}
 
+	/**
+	 * Buffers a flow of actions and executes them together in a transaction.
+	 * @param bufferCount How many actions are executed together in a single transaction at maximum.
+	 * @return Completes when all actions are done.
+	 */
+	public static Function<Flowable<Action>, Completable> bufferedTx(Database db, int bufferCount) {
+		return upstream -> upstream.buffer(bufferCount).flatMapCompletable(actions -> {
+			return db.asyncTx(() -> {
+				for (Action action : actions) {
+					action.run();
+				}
+			});
+		}, false, 1);
+	}
 }

@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Map;
 
+import com.gentics.mesh.core.rest.node.field.impl.StringFieldImpl;
 import io.reactivex.Observable;
 import org.apache.commons.io.IOUtils;
 
@@ -642,4 +643,31 @@ public interface TestHelperMethods {
 		tx(() -> group().removeRole(roles().get("admin")));
 	}
 
+	default ProjectResponse getProject() {
+		return call(() -> client().findProjectByName(PROJECT_NAME));
+	}
+
+	default NodeResponse createFolder(String name) {
+		return createFolder(name, getProject().getRootNode().getUuid());
+	}
+
+	default NodeResponse createFolder(String name, NodeResponse parentNode) {
+		return createFolder(name, parentNode.getUuid());
+	}
+
+	default NodeResponse createFolder(String name, String parentUuid) {
+		NodeCreateRequest request = new NodeCreateRequest();
+		request.setSchemaName("folder");
+		request.setLanguage("en");
+		request.setParentNodeUuid(parentUuid);
+		request.getFields().put("slug", new StringFieldImpl().setString(name));
+		request.getFields().put("name", new StringFieldImpl().setString(name));
+		return call(() -> client().createNode(PROJECT_NAME, request));
+	}
+
+	default RoleResponse createRole(String name) {
+		RoleCreateRequest request = new RoleCreateRequest();
+		request.setName(name);
+		return call(() -> client().createRole(request));
+	}
 }

@@ -4,6 +4,7 @@ import static com.gentics.mesh.core.data.relationship.GraphPermission.READ_PERM;
 import static com.gentics.mesh.core.data.relationship.GraphPermission.UPDATE_PERM;
 import static com.gentics.mesh.core.rest.error.Errors.error;
 import static com.gentics.mesh.rest.Messages.message;
+import static com.gentics.mesh.util.RxUtil.bufferedTx;
 import static io.netty.handler.codec.http.HttpResponseStatus.BAD_REQUEST;
 import static io.netty.handler.codec.http.HttpResponseStatus.NOT_FOUND;
 import static io.netty.handler.codec.http.HttpResponseStatus.OK;
@@ -159,7 +160,9 @@ public class RoleCrudHandler extends AbstractCrudHandler<Role, RoleResponse> {
 					}
 
 					// 3. Apply the permission actions
-					element.applyPermissions(batch, role, BooleanUtils.isTrue(requestModel.getRecursive()), permissionsToGrant, permissionsToRevoke);
+					element.applyPermissions(batch, role, BooleanUtils.isTrue(requestModel.getRecursive()), permissionsToGrant, permissionsToRevoke)
+						.to(bufferedTx(db, 100))
+						.subscribe();
 					return Tuple.tuple(batch, role.getName());
 				});
 

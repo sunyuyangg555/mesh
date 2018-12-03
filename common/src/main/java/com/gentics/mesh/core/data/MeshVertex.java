@@ -8,6 +8,8 @@ import com.gentics.mesh.core.data.search.SearchQueueBatch;
 import com.gentics.mesh.graphdb.model.MeshElement;
 import com.syncleus.ferma.VertexFrame;
 import com.tinkerpop.blueprints.Vertex;
+import io.reactivex.Flowable;
+import io.reactivex.functions.Action;
 
 /**
  * A mesh vertex is a mesh element that exposes various graph OGM specific methods. We use the interface abstraction in order to hide certain ferma methods
@@ -33,7 +35,7 @@ public interface MeshVertex extends MeshElement, VertexFrame {
 	void delete(BulkActionContext context);
 
 	/**
-	 * Grant the set of permissions and revoke the other set of permissions to this element using the role.
+	 * Return a Flowable of actions which grant the set of permissions and revoke the other set of permissions to this element using the role.
 	 * 
 	 * @param batch
 	 * @param role
@@ -41,8 +43,8 @@ public interface MeshVertex extends MeshElement, VertexFrame {
 	 * @param permissionsToGrant
 	 * @param permissionsToRevoke
 	 */
-	void applyPermissions(SearchQueueBatch batch, Role role, boolean recursive, Set<GraphPermission> permissionsToGrant,
-			Set<GraphPermission> permissionsToRevoke);
+	Flowable<Action> applyPermissions(SearchQueueBatch batch, Role role, boolean recursive, Set<GraphPermission> permissionsToGrant,
+									  Set<GraphPermission> permissionsToRevoke);
 
 	/**
 	 * Add a unique <b>out-bound</b> link to the given vertex for the given set of labels. Note that this method will effectively ensure that only one
