@@ -24,6 +24,7 @@ import com.gentics.mesh.core.rest.schema.FieldSchemaContainerVersion;
 import com.gentics.mesh.core.rest.schema.change.impl.SchemaChangeModel;
 import com.gentics.mesh.core.rest.schema.change.impl.SchemaChangesListModel;
 import com.gentics.mesh.json.JsonUtil;
+import com.syncleus.ferma.tx.Tx;
 
 /**
  * Abstract implementation for a graph field container version.

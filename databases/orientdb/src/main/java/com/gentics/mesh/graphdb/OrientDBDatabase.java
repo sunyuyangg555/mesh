@@ -74,7 +74,6 @@ import com.orientechnologies.orient.server.OServer;
 import com.orientechnologies.orient.server.OServerMain;
 import com.orientechnologies.orient.server.distributed.ODistributedServerManager;
 import com.orientechnologies.orient.server.distributed.ODistributedServerManager.DB_STATUS;
-import com.orientechnologies.orient.server.distributed.impl.ODistributedStorage;
 import com.orientechnologies.orient.server.hazelcast.OHazelcastPlugin;
 import com.orientechnologies.orient.server.plugin.OServerPluginManager;
 import com.syncleus.ferma.EdgeFrame;
@@ -996,7 +995,7 @@ public class OrientDBDatabase extends AbstractDatabase {
 				OStorage storage = db.getStorage();
 				if (storage instanceof OAbstractPaginatedStorage) {
 					((OAbstractPaginatedStorage) storage).check(verbose, text -> {
-						System.out.println(text);
+						System.out.print(text);
 					});
 				} else {
 					throw error(BAD_REQUEST, "admin_check_database_not_supported_cluster_mode");

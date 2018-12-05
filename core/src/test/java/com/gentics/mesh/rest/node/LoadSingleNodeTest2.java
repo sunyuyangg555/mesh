@@ -25,7 +25,7 @@ import com.gentics.mesh.rest.client.MeshRestClient;
 import com.gentics.mesh.test.context.AbstractMeshTest;
 import com.gentics.mesh.test.context.MeshTestSetting;
 
-@MeshTestSetting(useElasticsearch = false, testSize = PROJECT_AND_NODE, startServer = true, inMemoryDB=true)
+@MeshTestSetting(useElasticsearch = false, testSize = PROJECT_AND_NODE, startServer = true, inMemoryDB = false)
 public class LoadSingleNodeTest2 extends AbstractMeshTest {
 
 	public static final String PROJECT_NAME = "test";
@@ -45,23 +45,17 @@ public class LoadSingleNodeTest2 extends AbstractMeshTest {
 		AtomicBoolean stopFlag = new AtomicBoolean(false);
 
 		// Client A - Create Nodes
-		AtomicLong counter = new AtomicLong();
-		Long createTimer = vertx().setPeriodic(250, ch -> {
-			long count = counter.getAndIncrement();
-			NodeCreateRequest nodeCreateRequest = new NodeCreateRequest();
-			nodeCreateRequest.setSchemaName("folder");
-			nodeCreateRequest.setParentNodeUuid(project.getRootNode().getUuid());
-			nodeCreateRequest.getFields().put("slug", new StringFieldImpl().setString("test_" + count));
-			nodeCreateRequest.getFields().put("name", new StringFieldImpl().setString("Name " + count));
-			nodeCreateRequest.setLanguage("en");
-			client().createNode(PROJECT_NAME, nodeCreateRequest).toCompletable().subscribe(() -> {
-				System.out.println("Created node " + count);
-			});
-		});
+		NodeCreateRequest nodeCreateRequest = new NodeCreateRequest();
+		nodeCreateRequest.setSchemaName("folder");
+		nodeCreateRequest.setParentNodeUuid(project.getRootNode().getUuid());
+		nodeCreateRequest.getFields().put("slug", new StringFieldImpl().setString("test"));
+		nodeCreateRequest.getFields().put("name", new StringFieldImpl().setString("Name"));
+		nodeCreateRequest.setLanguage("en");
+		call(() -> client().createNode(PROJECT_NAME, nodeCreateRequest));
 
 		// Client B - Update schema
 		AtomicInteger schemaCounter = new AtomicInteger();
-		long schemaTimer = vertx().setPeriodic(60 * 1000, ch -> {
+		long schemaTimer = vertx().setPeriodic(20 * 1000, ch -> {
 			SchemaUpdateRequest request = JsonUtil.readValue(json, SchemaUpdateRequest.class);
 			request.setDescription("Test" + schemaCounter.getAndIncrement());
 			System.out.println("Updating schema: " + schemaCounter.get());
@@ -84,11 +78,12 @@ public class LoadSingleNodeTest2 extends AbstractMeshTest {
 					System.out.println(result.toJson());
 					vertx().cancelTimer(ch);
 					vertx().cancelTimer(schemaTimer);
-					vertx().cancelTimer(createTimer);
 				}
 			});
 		});
 
+		System.in.read();
+		System.out.println(call(() -> client().checkDatabase()).toJson());
 		System.in.read();
 		System.out.println(call(() -> client().checkConsistency()).toJson());
 		System.in.read();
