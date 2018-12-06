@@ -62,6 +62,9 @@ public class UserTest extends AbstractMeshTest implements BasicObjectTestcases {
 	@Test
 	@Override
 	public void testTransformToReference() throws Exception {
+		tx(tx -> {
+			return null;
+		});
 		try (Tx tx = tx()) {
 			User user = user();
 			UserReference reference = user.transformToReference();

@@ -70,17 +70,17 @@ public class LoadClusterTest extends AbstractTwoNodeClusterTest {
 			}, err -> stopWorld());
 		});
 
-		// Client B - Delete nodes
-		Thread.sleep(5000);
-		deleteTimer = vertx.setPeriodic(750, rh -> {
-			if (nodeUuids.isEmpty()) {
-				return;
-			}
-			String uuid = nodeUuids.pop();
-			clientB.deleteNode(PROJECT_NAME, uuid).toCompletable().subscribe(() -> {
-				System.out.println("Node Deleted " + uuid);
-			}, err -> stopWorld());
-		});
+//		// Client B - Delete nodes
+//		Thread.sleep(5000);
+//		deleteTimer = vertx.setPeriodic(750, rh -> {
+//			if (nodeUuids.isEmpty()) {
+//				return;
+//			}
+//			String uuid = nodeUuids.pop();
+//			clientB.deleteNode(PROJECT_NAME, uuid).toCompletable().subscribe(() -> {
+//				System.out.println("Node Deleted " + uuid);
+//			}, err -> stopWorld());
+//		});
 
 		// Client B - Update schema
 		AtomicInteger schemaCounter = new AtomicInteger();
