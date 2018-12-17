@@ -4,6 +4,7 @@ import com.gentics.mesh.context.InternalActionContext;
 import com.gentics.mesh.core.rest.common.RestModel;
 import com.gentics.mesh.graphdb.model.MeshElement;
 
+import com.gentics.mesh.graphdb.transaction.TxFunction;
 import io.reactivex.Single;
 
 /**
@@ -49,7 +50,7 @@ public interface TransformableElement<T extends RestModel> extends MeshElement {
 	 *            optional list of language tags to be used for language fallback
 	 * @return
 	 */
-	T transformToRestSync(InternalActionContext ac, int level, String... languageTags);
+	TxFunction<T> transformToRestSync(InternalActionContext ac, int level, String... languageTags);
 
 	/**
 	 * Return the etag for the element.

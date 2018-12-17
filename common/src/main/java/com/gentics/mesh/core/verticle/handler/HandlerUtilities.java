@@ -29,6 +29,8 @@ import com.gentics.mesh.core.data.search.SearchQueueBatch;
 import com.gentics.mesh.core.rest.common.RestModel;
 import com.gentics.mesh.core.rest.error.NotModifiedException;
 import com.gentics.mesh.graphdb.spi.Database;
+import com.gentics.mesh.graphdb.transaction.TxConsumer;
+import com.gentics.mesh.graphdb.transaction.TxFunction;
 import com.gentics.mesh.parameter.PagingParameters;
 import com.gentics.mesh.util.ResultInfo;
 import com.gentics.mesh.util.Tuple;
@@ -203,7 +205,7 @@ public class HandlerUtilities {
 	 */
 	public <T extends MeshCoreVertex<RM, T>, RM extends RestModel> void readElement(InternalActionContext ac, String uuid,
 		TxAction1<RootVertex<T>> handler, GraphPermission perm) {
-		asyncTx(ac, (tx) -> {
+		TxFunction.create(tx -> {
 			RootVertex<T> root = handler.handle();
 			T element = root.loadObjectByUuid(ac, uuid, perm);
 
@@ -215,9 +217,11 @@ public class HandlerUtilities {
 					throw new NotModifiedException();
 				}
 			}
-			return element.transformToRestSync(ac, 0);
-		}, (model) -> ac.send(model, OK));
-
+			return element;
+		}).flatMap(element -> element.transformToRestSync(ac, 0))
+		.commit()
+		.runInNewAsyncTx()
+		.subscribe(model -> ac.send(model, OK), ac::fail);
 	}
 
 	/**
