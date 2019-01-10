@@ -42,7 +42,6 @@ public class OAuth2KeycloakTest extends AbstractMeshTest {
 	};
 
 	@Test
-	@Ignore("Fails on CI pipeline. See https://github.com/gentics/mesh/issues/608")
 	public void testKeycloakAuth() throws Exception {
 
 		// 1. Login the user

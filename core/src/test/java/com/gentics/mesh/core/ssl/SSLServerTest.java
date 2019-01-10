@@ -19,7 +19,6 @@ public class SSLServerTest extends AbstractMeshTest {
 	}
 
 	@Test
-	@Ignore("Fails on CI pipeline. See https://github.com/gentics/mesh/issues/608")
 	public void testReadByUUID() throws Exception {
 		String uuid = userUuid();
 		call(() -> client().findUserByUuid(uuid));

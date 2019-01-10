@@ -19,7 +19,6 @@ import io.vertx.core.Vertx;
 /**
  * Test how a cluster behaves with more then two nodes.
  */
-@Ignore("Fails on CI pipeline. See https://github.com/gentics/mesh/issues/608")
 public class MultiNodeClusterTest extends AbstractClusterTest {
 
 	private static String clusterPostFix = randomUUID();

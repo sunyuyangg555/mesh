@@ -142,7 +142,6 @@ public class UserEndpointTest extends AbstractMeshTest implements BasicRestTestc
 	 * himself.
 	 */
 	@Test
-	@Ignore("Fails on CI pipeline. See https://github.com/gentics/mesh/issues/608")
 	public void testUpdateUsingToken() {
 		String uuid = tx(() -> user().getUuid());
 		String oldHash = tx(() -> user().getPasswordHash());
@@ -174,7 +173,6 @@ public class UserEndpointTest extends AbstractMeshTest implements BasicRestTestc
 	 * Test that the user is able to update itself even without the assigned perm. The reset token should grant the right to update himself.
 	 */
 	@Test
-	@Ignore("Fails on CI pipeline. See https://github.com/gentics/mesh/issues/608")
 	public void testUpdateUsingTokenWithoutLogout() {
 		String uuid = tx(() -> user().getUuid());
 		String oldHash = tx(() -> user().getPasswordHash());

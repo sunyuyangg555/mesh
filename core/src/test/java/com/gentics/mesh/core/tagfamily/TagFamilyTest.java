@@ -17,7 +17,6 @@ import com.syncleus.ferma.tx.Tx;
 public class TagFamilyTest extends AbstractMeshTest {
 
 	@Test
-	@Ignore("Fails on CI pipeline. See https://github.com/gentics/mesh/issues/608")
 	public void testDelete() {
 		TagFamily tagFamily = tagFamily("colors");
 		Long nTags = tx(() -> tagFamily.findAll().count());
