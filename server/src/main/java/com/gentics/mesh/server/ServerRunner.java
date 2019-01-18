@@ -9,6 +9,7 @@ import com.gentics.mesh.dagger.MeshInternal;
 import com.gentics.mesh.etc.config.MeshOptions;
 import com.gentics.mesh.router.EndpointRegistry;
 import com.gentics.mesh.search.endpoint.ElasticsearchHeadEndpoint;
+import com.gentics.mesh.verticle.admin.AdminGUI2Endpoint;
 import com.gentics.mesh.verticle.admin.AdminGUIEndpoint;
 
 import io.vertx.core.json.JsonObject;
@@ -39,8 +40,8 @@ public class ServerRunner {
 		// options.getClusterOptions().setClusterName("test");
 		// options.setNodeName("node1");
 		// options.getClusterOptions().setEnabled(true);
-		// options.getSearchOptions().setUrl(null);
-		// options.getSearchOptions().setStartEmbedded(false);
+		 options.getSearchOptions().setUrl(null);
+		 options.getSearchOptions().setStartEmbedded(false);
 
 		Mesh mesh = Mesh.mesh(options);
 		mesh.setCustomLoader((vertx) -> {
@@ -50,6 +51,7 @@ public class ServerRunner {
 			// Add admin ui
 			EndpointRegistry registry = MeshInternal.get().endpointRegistry();
 			registry.register(AdminGUIEndpoint.class);
+			registry.register(AdminGUI2Endpoint.class);
 
 			// Add elastichead
 			if (options.getSearchOptions().getUrl() != null) {
